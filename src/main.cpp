@@ -12,18 +12,22 @@ void disabled() {}
 
 void competition_initialize() {}
 
+/*
+Robot::controlador_giro(-90, 1.25, 0, .4,3);
+Robot::controlador_chassis({0,24}, 10, 5.12, .46, 2); 
+*/
+
 void autonomous() {
 	Robot::start_task("TRACKING",Robot::raestro);
-
-	//Robot::move_to(0 ,55 ,90 ,13 ,5.12 ,.5 ,1.5 ,5.12 ,.5 ,1 ,2);
-	//Robot::move_to(55 ,55 ,180 ,8 ,5.12 ,.5 ,1.5 ,5.12 ,.5 ,1 ,2);
-	//Robot::move_to(55 ,0 ,270 ,13 ,5.12 ,.5 ,1.5 ,5.12 ,.5 ,1 ,2);
-	//Robot::move_to(0,0 ,360 ,13 ,5.12 ,.5 ,1.5 ,5.12 ,.5 ,1 ,2);
+	Robot::test_odom();
+	pros::delay(250);
+	Robot::get_data();
+    
+	//Robot::move_to_pure_pursuit({{0,55},{55,55}}, {55,55}, 9);
 }
 
-void opcontrol() {
-	
-	Robot::start_task("DRIVE",Robot::drive);	
 
-	
+void opcontrol() {
+	//Robot::start_task("TRACKING",Robot::raestro);
+	Robot::start_task("DRIVE", Robot::drive);
 }
