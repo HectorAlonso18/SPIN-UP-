@@ -1,4 +1,7 @@
 #include "main.h"
+#include "pros/adi.hpp"
+
+#include <atomic>
 #include <map>
 #include <memory>
 #include <string>
@@ -21,10 +24,15 @@ public:
  static pros::Motor RightBack_1;
  static pros::Motor RightBack_2;
 
+ static pros::Motor FlyWheel_1;
+ static pros::Motor Flywheel_2; 
+
  static pros::Imu gyro;
 
  static pros::ADIEncoder Encoder_Derecho;
  static pros::ADIEncoder Encoder_back;
+
+
 
  static pros::Controller master;
 
@@ -55,19 +63,24 @@ public:
  static double radioX;
  
  /*tracking wheel Y diameter */
- /*tracking wheel X diameter */
  static double Diametro_Y;
+ /*tracking wheel X diameter */
  static double Diametro_X;
-
+ 
+ /*Frecuencia del Encoder_Derecho*/
  static double f_Derecho;
+ /*Frecuencia del Encoder_Trasero*/
  static double f_back;
-   
+
+ /*Valores previos del Encoder*/  
  static double prev_Y;
+ /*Valores previos del Encoder*/ 
  static double prev_X;
 
  static double prevOrientacionRad;
  static double prevGlobalX;
  static double prevGlobalY;
+
 
  static std::atomic<double>absOrientacionRad;
  static std::atomic<double>absOrientacionDeg;
@@ -81,6 +94,8 @@ public:
  static std::atomic<double>absGlobalX;
  static std::atomic<double>absGlobalY;
 
+ static double lookAheadDis;
+
  static double EncoderY_Actual;
  static double EncoderX_Actual;
 
@@ -88,20 +103,38 @@ public:
 
  /*Raestrea la posicion y orientacion del robot usando odometria*/
  static void raestro(void *ptr);
+ /*Imprime las coordenadas X, Y , Orientacion */
+ static void get_data(void);
  /*Actualiza los valores de los Encoders */
  static void updateEncoders(void);
  /*Actualiza los valores del IMU */
  static void updatePosicion(void);
 
  /*Mover el robot a una determinada coordenada y posición, usando dos controladores PID */
- static void move_to(double X, double Y, double Orientacion, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double drive_error_range, double turn_error_range);
+ static void move_to(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double tiempo);
+ /*Controlador del chassis para movimientos lineales*/
+ static void controlador_chassis(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive,double tiempo);
+ /*Controlado para el giro, IMPORTANTE: Usar para rotar en un misma Posicion*/
+ static void controlador_giro(double Orientacion, double kp_turn,double ki_turn,double kd_turn,float tiempo);
 
- /*Rotar el robot a una determinada orientación */
- static void rotate_to(double Orientacion, double kp_turn, double ki_turn, double kd_turn, double tiempo);
+
+ static void move_to_pure_pursuit(std::vector<std::vector<double>> points, std::vector<double> final_point, int lookAheadDistance);
  
+ //Funcion para probar el controlador lineal
+ static void test_lineal(void);
+ //Funcion para probar el controlador rotacional
+ static void test_giro(void);
+ //Funcion para probar el controlador completo
+ static void test_odom(void); 
+
+ //Controlador del flywheel
+ static void move_flywheel(int RPM, float tiempo);
+
  /*Modo driver del robot */
  static void drive(void *ptr);
  static void x_drive(double power, double strafe_lf_rb, double strafe_rf_lb, double turn);
+ static void Fly_wheel_action(int power);
+
  /*setear el tipo de frenado */
  static void brake(std::string mode);
 
