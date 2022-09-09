@@ -1,13 +1,11 @@
 #include "Purepursuit.h"
 #include "main.h"
 
-//#include "pros/adi.hpp"
-//#include "pros/distance.hpp"
-//#include "pros/misc.h"
+
 #include "odometria.h"
 #include "pros/motors.h"
 #include "pros/rtos.hpp"
-//#include "pros/rtos.hpp"
+
 #include <cmath>
 #include <atomic>
 #include <iostream>
@@ -21,10 +19,10 @@
 
 //Lambda fuction, para convertir de grados a radianes
 #define TO_RAD(n) n * M_PI / 180;
+#define TO_DEGREES(n) (n*180)/M_PI;
 
 
 //Puerto 1, 4  no jala
-
 
 pros::Motor Robot::LeftFront_1(3,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
 pros::Motor Robot::LeftFront_2(2,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
@@ -45,6 +43,8 @@ pros::Imu Robot::gyro(8);
 
 pros::ADIEncoder Robot::Encoder_Derecho('E','F',false);
 pros::ADIEncoder Robot::Encoder_back('G','H',true);
+
+pros::ADIDigitalOut Robot::piston('A'); 
 
 
 pros::Controller Robot::master(pros::E_CONTROLLER_MASTER);
@@ -111,6 +111,9 @@ double Robot::EncoderX_Actual=0;
 
 double Robot::prev_A=0;
 
+double Robot::High_GoalX=5.06;
+double Robot::High_GoalY=96.73;
+
 void Robot::raestro(void *ptr){
     while(true){
         updateEncoders();
@@ -121,12 +124,29 @@ void Robot::raestro(void *ptr){
 
 void Robot::get_data(void){
     for(auto i=0; i<=1000; i++){
-    std::cout<<"\nHeading: "<<Robot::absOrientacionDeg;
-	std::cout<<"\tX: "<<Robot::absGlobalX;
-	std::cout<<"\tY: "<<Robot::absGlobalY; 
+    std::cout<<"\nHeading: "<<"\t"<<Robot::absOrientacionDeg;
+	std::cout<<"\tX: "<<"\t"<<Robot::absGlobalX;
+	std::cout<<"\tY: "<<"\t"<<Robot::absGlobalY; 
 	pros::delay(10);
 	i+=10;
     }
+}
+
+double Robot::get_angle_pro(std::vector<double> Current, std::vector<double> Target){
+
+    //Calculamos un diferencial de Y y X
+    //dy = Y2 - Y1
+    double dy = Target[1] - Current[1]; 
+    //dx= X2 -X1
+	double dx = Target[0] - Current[0]; 
+    
+    //Calculamos el angulo, utilizando arco tangente, pero con el plano desfasado para que concuerda con el del robot
+	double Angulo =  TO_DEGREES (atan2(dx, dy));
+    
+    //El resultado lo ponemos en un rango de 0-360
+	Angulo = reducir_angulo_0_360(Angulo);
+	
+	return  Angulo ;
 }
 
 void Robot::updateEncoders(void){
@@ -222,7 +242,7 @@ void Robot::updatePosicion(void){
    
 }
 
-
+ 
 
  void Robot::move_to(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double tiempo){
      
@@ -257,11 +277,11 @@ void Robot::updatePosicion(void){
          float drive_proporcion= drive_error * kp_drive;
          float turn_proporcion= turn_error * kp_turn;
 
-         if(fabs(drive_error)<zonaintegralactiva_drive && drive_error!=0){integral_raw_drive=0;}
+         if(fabs(drive_error)>zonaintegralactiva_drive && drive_error!=0){integral_raw_drive=0;}
 
          else{integral_raw_drive+= drive_error;}
 
-         if(fabs(turn_error)<zonaintegralactiva_turn && turn_error!=0){integral_raw_turn=0;}
+         if(fabs(turn_error)>zonaintegralactiva_turn && turn_error!=0){integral_raw_turn=0;}
 
          else{integral_raw_turn+= turn_error;}
 
@@ -316,6 +336,96 @@ void Robot::updatePosicion(void){
         pros::delay(10);
  }
 
+void Robot::move_facing_to(std::vector<double>posicion, double TargetX, double TargetY, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double tiempo){
+    double X=posicion[0];
+    double Y=posicion[1]; 
+
+    float integral_raw_drive=0;
+    float last_error_drive=0;
+
+    float zonaintegralactiva_drive= (hypot(X-absGlobalX,Y-absGlobalY))*.45;
+    float integralpowerlimit_drive= 50/ki_drive;
+
+    float integral_raw_turn=0;
+    float last_error_turn=0;
+
+    float integralpowerlimit_turn= 50/ki_turn;
+
+    bool condicion_odometria=false;
+     
+    tiempo*=1000;
+    int contador=0;
+
+    while(condicion_odometria==false){
+         
+         double Orientacion= get_angle_pro({absGlobalX,absGlobalY}, {TargetX,TargetY});
+         float zonaintegralactiva_turn= Orientacion * .3; 
+
+         float drive_error= hypot(X-absGlobalX,Y-absGlobalY); 
+         float turn_error= reducir_angulo_180_180(Orientacion- absOrientacionDeg);
+
+         float drive_proporcion= drive_error * kp_drive;
+         float turn_proporcion= turn_error * kp_turn;
+
+         if(fabs(drive_error)>zonaintegralactiva_drive && drive_error!=0){integral_raw_drive=0;}
+
+         else{integral_raw_drive+= drive_error;}
+
+         if(fabs(turn_error)>zonaintegralactiva_turn && turn_error!=0){integral_raw_turn=0;}
+
+         else{integral_raw_turn+= turn_error;}
+
+         integral_raw_drive = integral_raw_drive > integralpowerlimit_drive ? integralpowerlimit_drive : integral_raw_drive < -integralpowerlimit_drive ? -integralpowerlimit_drive: integral_raw_drive;
+
+         float integral_drive= ki_drive*integral_raw_drive;
+
+         integral_raw_turn= integral_raw_turn > integralpowerlimit_turn ? integral_raw_turn : integral_raw_turn <-integralpowerlimit_turn ? -integral_raw_turn : integral_raw_turn;
+
+         float integral_turn= ki_turn*integral_raw_turn;
+
+         float derivada_drive = kd_drive * (drive_error - last_error_drive);
+         last_error_drive=drive_error;
+
+         float derivada_turn= kd_turn * (turn_error - last_error_turn);
+         last_error_turn= turn_error;
+
+         float finalpower_drive= (ceil(drive_proporcion+integral_drive+derivada_drive));
+         float finalpower_turn= (ceil(turn_proporcion+integral_turn+derivada_turn));
+
+         finalpower_drive= finalpower_drive > 180 ? 180 : finalpower_drive < -180 ? -180:finalpower_drive;
+         finalpower_turn= finalpower_turn > 150 ? 150 : finalpower_turn < -150 ? -150:finalpower_turn;
+
+         //if(fabs(turn_error)<turn_error_range){finalpower_turn=0;}
+         //if(fabs(drive_error)<drive_error_range){finalpower_drive=0;}
+
+         Robot::LeftFront_1.move_velocity(finalpower_drive*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))+finalpower_turn) ;
+         Robot::LeftFront_2.move_velocity(finalpower_drive*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))+finalpower_turn);
+
+         Robot::LeftBack_1.move_velocity(finalpower_drive*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))+finalpower_turn);
+         Robot::LeftBack_2.move_velocity(finalpower_drive*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))+finalpower_turn);
+
+         Robot::RightFront_1.move_velocity(finalpower_drive*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))-finalpower_turn);
+         Robot::RightFront_2.move_velocity(finalpower_drive*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))-finalpower_turn);
+       
+         Robot::RightBack_1.move_velocity(finalpower_drive*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))-finalpower_turn);
+         Robot::RightBack_2.move_velocity(finalpower_drive*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - PI/4))-finalpower_turn);
+         
+         if((fabs(drive_error)<.2 && fabs(turn_error) <2)|| contador>=tiempo){condicion_odometria=true;}
+
+         std::cout<<"\nTiempo: "<<contador;
+         std::cout<<"\tD Error: "<<drive_error;
+         std::cout<<"\tT Error: "<<turn_error;
+
+         pros::delay(10);
+         contador+=10;
+    }
+        
+        Robot::brake("stop");
+             
+        pros::delay(10);
+    
+}
+
 
 
  void Robot::controlador_chassis(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive,double tiempo){
@@ -341,11 +451,12 @@ void Robot::updatePosicion(void){
          float drive_error= hypot(X-absGlobalX,Y-absGlobalY); 
 
          float drive_proporcion= drive_error * kp_drive;
-
-         if(fabs(drive_error)<zonaintegralactiva_drive && drive_error!=0){integral_raw_drive=0;}
+         
+         //Corregido
+         if(fabs(drive_error)>zonaintegralactiva_drive && drive_error!=0){integral_raw_drive=0;}
 
          else{integral_raw_drive+= drive_error;}
-   
+     
          integral_raw_drive = integral_raw_drive > integralpowerlimit_drive ? integralpowerlimit_drive : integral_raw_drive < -integralpowerlimit_drive ? -integralpowerlimit_drive: integral_raw_drive;
 
          float integral_drive= ki_drive*integral_raw_drive;
@@ -371,14 +482,14 @@ void Robot::updatePosicion(void){
          
         if(fabs(drive_error)<.2 || contador>=tiempo){condicion_odometria=true;}
 
-        std::cout<<"\nTiempo: "<<contador;
-        std::cout<<"\tX: "<<absGlobalX;
-        std::cout<<"\tY: "<<absGlobalY;
-        std::cout<<"\tError: "<<drive_error;
-        std::cout<<"\tP: "<<drive_proporcion;
-        std::cout<<"\tI: "<<integral_drive;
-        std::cout<<"\tD: "<<derivada_drive;
-        std::cout<<"\tPower: "<<finalpower_drive;
+        std::cout<<"\nTiempo: "<<"\t"<<contador<<"\t";
+        std::cout<<"\tX: "<<"\t"<<absGlobalX<<"\t";
+        std::cout<<"\t Y: "<<"\t"<<absGlobalY<<"\t";
+        std::cout<<"\tError: "<<"\t"<<drive_error<<"\t";
+        std::cout<<"\tP: "<<"\t"<<drive_proporcion<<"\t";
+        std::cout<<"\tI: "<<"\t"<<integral_drive<<"\t";
+        std::cout<<"\tD: "<<"\t"<<derivada_drive<<"\t";
+        std::cout<<"\tPower: "<<"\t"<<finalpower_drive<<"\t";
     
         pros::delay(10);
         contador+=10;
@@ -399,7 +510,7 @@ void Robot::updatePosicion(void){
      float integral_raw_turn=0;
      float last_error_turn=0;
 
-     float zonaintegralactiva_turn= Orientacion * .45;
+     float zonaintegralactiva_turn= Orientacion * .3;
      float integralpowerlimit_turn= 50/ki_turn;
 
      int contador=0;
@@ -415,7 +526,7 @@ void Robot::updatePosicion(void){
          float turn_proporcion= turn_error * kp_turn;
 
 
-         if(fabs(turn_error)<zonaintegralactiva_turn && turn_error!=0){integral_raw_turn=0;}
+         if(fabs(turn_error)>zonaintegralactiva_turn && turn_error!=0){integral_raw_turn=0;}
 
          else{integral_raw_turn+= turn_error;}
 
@@ -448,13 +559,13 @@ void Robot::updatePosicion(void){
         
          if(fabs(turn_error) < 2 || contador>=tiempo){condicion_odometria=true;}
 
-        std::cout<<"\nTiempo: "<<contador;
-        std::cout<<"\tTheta: "<<absOrientacionDeg;
-        std::cout<<"\tError: "<<turn_error;
-        std::cout<<"\tP: "<<turn_proporcion;
-        std::cout<<"\tI: "<<integral_turn;
-        std::cout<<"\tD: "<<derivada_turn;
-        std::cout<<"\tPower: "<<finalpower_turn;
+        std::cout<<"\nTiempo: "<<"\t"<<contador<<"\t";
+        std::cout<<"\tHeading: "<<"\t"<<absOrientacionDeg<<"\t"; 
+        std::cout<<"\tError: "<<"\t"<<turn_error<<"\t";
+        std::cout<<"\tP: "<<"\t"<<turn_proporcion<<"\t";
+        std::cout<<"\tI: "<<"\t"<<integral_turn<<"\t";
+        std::cout<<"\tD: "<<"\t"<<derivada_turn<<"\t";
+        std::cout<<"\tPower: "<<"\t"<<finalpower_turn<<"\t";
 
         contador+=10;
 
@@ -468,8 +579,9 @@ void Robot::updatePosicion(void){
  }
 
 
-/*
 
+
+/*
  void Robot::move_to_pure_pursuit(std::vector<std::vector<double>> points, std::vector<double> final_point, int lookAheadDistance){
     
     std::vector<double> end; 
@@ -487,18 +599,17 @@ void Robot::updatePosicion(void){
             Orientacion= get_degrees(target, current);
 
             std::vector<double> Posicion {target[0],target[1],Orientacion};
-            move_to(Posicion, 1, 1, 1, 1, 1, 1, 1, 1);
+            move_to(Posicion,  8, 0.037, 60,1.56, .015, 15, 4);
             current={(float)absGlobalX, (float)absGlobalY};
             pros::delay(10);
         }
     }
-    move_to(final_point, 1, 1, 1, 1, 1,1, 1,1);
+            move_to(final_point,  8, 0.037, 60,1.56, .015, 15,4);
  }
 
-  
 */
- 
- 
+  
+
  //Funcion para probar el controlador lineal
  void Robot::test_lineal(void){
     Robot::controlador_chassis({0,24},  10, 5.12, .46,2.5);
@@ -524,75 +635,10 @@ void Robot::updatePosicion(void){
 	Robot::move_to({0,0,0}, 10, 5.12, .46, 1.25, 0, .4,2.5);
  } 
 
-
-/*
-void Robot::move_flywheel(int RPM, float tiempo){
-    float kp=0;
-    float kd=0;
-    float ki=0;
-
-    float integralraw=0;
-    float lasterror=0;
-
-    bool reloj=false;
-
-    float ZonaIntegralActiva= RPM*.45; 
-    float IntegralPowerLimit= 50/ki;
-
-    int contador=0; 
-    tiempo*=1000;
-
-    while(reloj && tiempo>contador){
-        float actual_velocity = (FlyWheel_1.get_actual_velocity() + Flywheel_2.get_actual_velocity())/2;
-        float error= abs(RPM-actual_velocity);
-
-        float proporcion= kp*error;
-        
-        if(fabs(error)<ZonaIntegralActiva && error !=0)
-        {integralraw= RPM*.8;} //SI SE LLEGA A LA ZONA INTEGRAL MUERTA DEJA DE ESTABILIZAR
-
-        else
-        {integralraw+= error;} //MIENTRAS NO ENTRE VA A ESTAR ESTABILIZANDO
-
-
-        integralraw= integralraw>IntegralPowerLimit? IntegralPowerLimit: integralraw < -IntegralPowerLimit ? -IntegralPowerLimit : integralraw;
-        //EN CASO DE QUE SUPERE LOS VALORES DEL POWER LIMIT TENDRA EL VALOR DEL POWER LIMIT (YA SEA POSITIVO O NEGATIVO)
-
-        float integral= ki*integralraw; //ESTABILIZADOR
-
-        float derivada= kd*(error-lasterror); //Derivativo
-        lasterror=error; //LECTURA DEL ULTIMO ERROR GUARDADA EN LA MEMORIA DINAMICA
-
-        derivada= error==0 ? 0: derivada; //CUANDO COMPLETEMOS EL TARGET EL DERIVATIVO SERA 0
-
-        float finalpower= ceil(proporcion+integral+derivada); //PODER DEL MOTOR CON EL PID, CONVIRTIENDO EN ENTERO EL VALOR FINAL
-        
-        finalpower= finalpower>420 ? 420:finalpower;
-        //ESTA CONDICION EN CASO DE QUE EL FINAL POWER SALGA DE LOS RANGOS PERMITIDOS, REGRESA TOMA EL MAS CERCANO, SI NO CONSERVA SU VALOR
-
-        FlyWheel_1.move_velocity(finalpower);
-        Flywheel_2.move_velocity(finalpower);
-
-        pros::delay(10);
-        contador+=10; 
-        
-        reloj= error<25 ? true : false;
-
-        if(reloj==false){
-            contador=0;
-        }
-
-    } 
-
-        FlyWheel_1.move_voltage(0);
-        Flywheel_2.move_voltage(0);
-
-} 
-*/
-
-
 void Robot::drive(void*ptr){
     int power_flywheel=0;
+
+    bool state_piston=false; 
     while(true){
         //Chassis 
         double y= master.get_analog(ANALOG_LEFT_Y);
@@ -611,8 +657,13 @@ void Robot::drive(void*ptr){
 
         //Flywheel
         power_flywheel= master.get_digital(DIGITAL_R2)==1 ? 12000 : master.get_digital(DIGITAL_R1)==1 ? -12000 :0; 
-        Fly_wheel_action(power_flywheel);        
- 
+        Fly_wheel_action(power_flywheel);
+
+        state_piston= master.get_digital_new_press(DIGITAL_A) ? !state_piston : state_piston;
+        Piston_movement(state_piston);  
+
+        std::cout<<"\nEstado Piston: "<<state_piston; 
+                                
 
         pros::delay(5);  
     }
@@ -633,6 +684,10 @@ void Robot::drive(void*ptr){
     FlyWheel_1.move_voltage(power); 
     Flywheel_2.move_voltage(power);
  }
+
+ void Robot::Piston_movement(bool state){
+    piston.set_value(state); 
+ } 
 
 
  
