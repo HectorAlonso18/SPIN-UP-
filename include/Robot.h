@@ -32,6 +32,8 @@ public:
  static pros::ADIEncoder Encoder_Derecho;
  static pros::ADIEncoder Encoder_back;
 
+ static pros::ADIDigitalOut piston; 
+
 
 
  static pros::Controller master;
@@ -101,17 +103,26 @@ public:
 
  static double prev_A;
 
+ static double High_GoalX;
+ static double High_GoalY;
+
  /*Raestrea la posicion y orientacion del robot usando odometria*/
  static void raestro(void *ptr);
  /*Imprime las coordenadas X, Y , Orientacion */
  static void get_data(void);
+ 
+ /*Calcula el angulo entre dos vectores */
+ static double get_angle_pro(std::vector<double> Current, std::vector<double> Target);
+
  /*Actualiza los valores de los Encoders */
  static void updateEncoders(void);
- /*Actualiza los valores del IMU */
+ /*Actualiza los valores de las Coordenadas */
  static void updatePosicion(void);
 
- /*Mover el robot a una determinada coordenada y posición, usando dos controladores PID */
+ /*Mueve el robot a una determinada coordenada y posición, usando dos controladores PID */
  static void move_to(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double tiempo);
+ /*Mueve el robot a una determinada posicion pero siempre viendo a un punto en especifico mientras se desplaza*/
+ static void move_facing_to(std::vector<double>posicion, double TargetX, double TargetY, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double tiempo);
  /*Controlador del chassis para movimientos lineales*/
  static void controlador_chassis(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive,double tiempo);
  /*Controlado para el giro, IMPORTANTE: Usar para rotar en un misma Posicion*/
@@ -134,6 +145,8 @@ public:
  static void drive(void *ptr);
  static void x_drive(double power, double strafe_lf_rb, double strafe_rf_lb, double turn);
  static void Fly_wheel_action(int power);
+
+ static void Piston_movement(bool state); 
 
  /*setear el tipo de frenado */
  static void brake(std::string mode);
