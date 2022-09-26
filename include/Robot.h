@@ -8,10 +8,11 @@
 #include <vector>
 #include <deque>
 
+
+
 class Robot
 {
 public: 
- 
  static pros::Motor LeftFront_1; 
  static pros::Motor LeftFront_2;
 
@@ -27,14 +28,15 @@ public:
  static pros::Motor FlyWheel_1;
  static pros::Motor Flywheel_2; 
 
+ static pros::Motor intaker_1;
+ static pros::Motor intaker_2;
+
  static pros::Imu gyro;
 
  static pros::ADIEncoder Encoder_Derecho;
  static pros::ADIEncoder Encoder_back;
 
  static pros::ADIDigitalOut piston; 
-
-
 
  static pros::Controller master;
 
@@ -62,8 +64,8 @@ public:
  /*tracking wheel Y radio */
  static double radioY;
  /*tracking wheel X radio*/
- static double radioX;
- 
+ static double radioX; 
+
  /*tracking wheel Y diameter */
  static double Diametro_Y;
  /*tracking wheel X diameter */
@@ -82,7 +84,6 @@ public:
  static double prevOrientacionRad;
  static double prevGlobalX;
  static double prevGlobalY;
-
 
  static std::atomic<double>absOrientacionRad;
  static std::atomic<double>absOrientacionDeg;
@@ -106,37 +107,28 @@ public:
  static double High_GoalX;
  static double High_GoalY;
 
+static std::atomic<double> turn_joytick;
+
  /*Raestrea la posicion y orientacion del robot usando odometria*/
  static void raestro(void *ptr);
  /*Imprime las coordenadas X, Y , Orientacion */
  static void get_data(void);
  
- /*Calcula el angulo entre dos vectores */
- static double get_angle_pro(std::vector<double> Current, std::vector<double> Target);
-
  /*Actualiza los valores de los Encoders */
  static void updateEncoders(void);
  /*Actualiza los valores de las Coordenadas */
  static void updatePosicion(void);
 
- /*Mueve el robot a una determinada coordenada y posición, usando dos controladores PID */
- static void move_to(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double tiempo);
- /*Mueve el robot a una determinada posicion pero siempre viendo a un punto en especifico mientras se desplaza*/
- static void move_facing_to(std::vector<double>posicion, double TargetX, double TargetY, double kp_drive, double ki_drive, double kd_drive, double kp_turn,double ki_turn,double kd_turn, double tiempo);
- /*Controlador del chassis para movimientos lineales*/
- static void controlador_chassis(std::vector<double> posicion, double kp_drive, double ki_drive, double kd_drive,double tiempo);
- /*Controlado para el giro, IMPORTANTE: Usar para rotar en un misma Posicion*/
- static void controlador_giro(double Orientacion, double kp_turn,double ki_turn,double kd_turn,float tiempo);
-
-
- static void move_to_pure_pursuit(std::vector<std::vector<double>> points, std::vector<double> final_point, int lookAheadDistance);
+ /*Mueve el robot a una determinada coordenada y posición, usando dos controladores PID
+   Modo_facing -> Mueve el robot a una determinada coordenada y una coordenada a apuntar*/
+ static void Odom_Movement(double(*fuctPtr_Mode)(double,double,double),std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY);
  
- //Funcion para probar el controlador lineal
- static void test_lineal(void);
- //Funcion para probar el controlador rotacional
- static void test_giro(void);
- //Funcion para probar el controlador completo
- static void test_odom(void); 
+ /*Mueve el robot con PID,  Modo 1:lineal , Modo 2: giros*/
+ static void PID_Movement(void(*fuctPtr_Mode)(double,double),std::vector<double>posicion,std::vector<double>DrivePID,std::vector<double> TurnPID,double tiempo);
+
+ static void move_to_pure_pursuit(std::vector< std::vector<double> > points, std::vector<double> final_point, int lookAheadDistance);
+
+ static void python_movement( double(*fuctPtr_mode)(double,double,double),std::vector<double> X, std::vector<double> Y, float tiempo);
 
  //Controlador del flywheel
  static void move_flywheel(int RPM, float tiempo);
@@ -148,6 +140,8 @@ public:
 
  static void Piston_movement(bool state); 
 
+ static void PID_drift(void *ptr);
+
  /*setear el tipo de frenado */
  static void brake(std::string mode);
 
@@ -155,6 +149,3 @@ public:
  static void reset_sensors();
 
 };
-
-
-

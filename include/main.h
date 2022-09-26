@@ -39,6 +39,8 @@
 #include "Robot.h" //Configuracion del robot
 #include "odometria.h" //Código de odometria
 #include "Purepursuit.h"
+#include "parametros.h"
+#include "PID.hpp"
 
 
 #include "pros/apix.h" //Libreria LVGl
