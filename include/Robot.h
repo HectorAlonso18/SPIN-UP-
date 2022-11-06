@@ -1,5 +1,6 @@
 #include "main.h"
 #include "pros/adi.hpp"
+#include "pros/rotation.hpp"
 
 #include <atomic>
 #include <map>
@@ -31,12 +32,13 @@ public:
  static pros::Motor intaker_1;
  static pros::Motor intaker_2;
 
+ static pros::Motor Indexer;
+
  static pros::Imu gyro;
+ static pros::Rotation Rotacion; 
 
  static pros::ADIEncoder Encoder_Derecho;
  static pros::ADIEncoder Encoder_back;
-
- static pros::ADIDigitalOut piston; 
 
  static pros::Controller master;
 
@@ -80,34 +82,52 @@ public:
  static double prev_Y;
  /*Valores previos del Encoder*/ 
  static double prev_X;
+ 
+ ////Variables necesarias para el calculo de coordenadas y posicion///
 
  static double prevOrientacionRad;
  static double prevGlobalX;
  static double prevGlobalY;
+///////////////////////////////////////////////////////////////////
 
+ //Orientacion actual en radianes
  static std::atomic<double>absOrientacionRad;
+ //Oreintacion actual en grados
  static std::atomic<double>absOrientacionDeg;
-
+ 
+ //Variable snecesarias para el calculo de coordenadas////
  static double localX;
  static double localY;
 
  static double delta_Y;
  static double delta_X;
+//////////////////////////////////////////////////////////
+ 
+ //Coordenadas actuales del robot
 
- static std::atomic<double>absGlobalX;
- static std::atomic<double>absGlobalY;
+ static std::atomic<double>absGlobalX; //Coordenada en X
+ static std::atomic<double>absGlobalY; //Coordenada en Y
 
- static double lookAheadDis;
+ static double lookAheadDis; //Parametro para purepursuit
 
- static double EncoderY_Actual;
+ //Valor de los dos encoders actuales
+ //Encoder Y
+ static double EncoderY_Actual; 
+ //Encoder X
  static double EncoderX_Actual;
-
+ //
+ 
+ //Orientacion_anterior
  static double prev_A;
-
+ 
+ //Sistema de coordenadas para la canasta
+ //Coordenada en X
  static double High_GoalX;
+ //Coordenada en Y
  static double High_GoalY;
-
-static std::atomic<double> turn_joytick;
+ 
+ //Variable necesaria para el PID en el modo driver, es el final Power
+ static std::atomic<double> turn_joytick;
 
  /*Raestrea la posicion y orientacion del robot usando odometria*/
  static void raestro(void *ptr);
@@ -134,12 +154,18 @@ static std::atomic<double> turn_joytick;
  static void move_flywheel(int RPM, float tiempo);
 
  /*Modo driver del robot */
+ //Modo driver
  static void drive(void *ptr);
+ //Calculos necesarios para mover un X-Drive
  static void x_drive(double power, double strafe_lf_rb, double strafe_rf_lb, double turn);
- static void Fly_wheel_action(int power);
-
- static void Piston_movement(bool state); 
-
+ //Mueve el Flywheel con una entrada de voltaje (mV)
+ static void move_Flywheel(int power);
+ //Mueve el Intake con una entrada de voltaje (mV)
+ static void move_Intake(int power);
+ //Acciona el disparador dependiendo de la entrada (bool)
+ static void move_Indexer(void); 
+ //PID de modo driver, setea un angulo durante el periodo Driver, el robot se quedara anclado
+ //En la posicion que se ha indicado, puedes desaclarlo moviendo el joytisck derecho
  static void PID_drift(void *ptr);
 
  /*setear el tipo de frenado */
