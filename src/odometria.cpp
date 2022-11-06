@@ -37,28 +37,37 @@ double get_angle_pro(std::vector<double> Current, std::vector<double> Target){
 	
 	return  Angulo ;
 }
- 
+
+
 double  Control_move_to(double Orientacion,double TargetX,double TargetY){
+    //Se desprecian los valores de los target y solos se acepta el de Orientacion
     TargetX=0;
     TargetY=0;
+    //No existe una alteracion en el calculo de orientacion
     Orientacion=Orientacion;
     return Orientacion;
 }
  
 double Control_move_facing_to(double Orientacion,double TargetX,double TargetY){
+    //No se desperecian los valores del los target ni de la orientacion
     TargetX=TargetX;
     TargetY=TargetY;
+    //Se altera el valor de la orientacion, la orientacion seria el resultado de la la diferencia que existe
+    //Entre las coordendas actuales y las del target, para que el robot pueda apuntar a ese punto mientras se
+    //Ejecuta el PID
     Orientacion= get_angle_pro({Robot::absGlobalX,Robot::absGlobalY}, {TargetX,TargetY});
     return Orientacion;
 }
 
 
 void Control_PID_lineal(double finalpower, double finalpower_turn){
+    //Se desprecia el final power turn y solo se admite el del finalpower normal
     finalpower=finalpower;
     finalpower_turn=0;
 }
 
 void Control_PID_turn(double finalpower,double finalpower_turn){
+    //SE desprecia el final power normal y solo se admite el finalpower turn
     finalpower=0;
     finalpower_turn=finalpower_turn;
 }
