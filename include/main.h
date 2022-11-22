@@ -4,7 +4,7 @@
  * Contains common definitions and header files used throughout your PROS
  * project.
  *
- * Copyright (c) 2017-2021, Purdue University ACM SIGBots.
+ * Copyright (c) 2017-2022, Purdue University ACM SIGBots.
  * All rights reserved.
  *
  * This Source Code Form is subject to the terms of the Mozilla Public
@@ -36,23 +36,20 @@
 
 #include "api.h"
 
-#include "Robot.h" //Configuracion del robot
-#include "odometria.h" //Código de odometria
+#include "Robot.h"
+#include "odometria.h"
 #include "Purepursuit.h"
 #include "parametros.h"
 #include "PID.hpp"
+#include "filtros.h"
 
-
-#include "pros/apix.h" //Libreria LVGl
-#include "math.h" //Libreria para realizar funciones matematicas
-
-
+#include "pros/apix.h"
+#include "math.h"
 
 /**
  * You should add more #includes here
  */
-#include "okapi/api.hpp" //Libreria okapi
-
+#include "okapi/api.hpp"
 //#include "pros/api_legacy.h"
 
 /**

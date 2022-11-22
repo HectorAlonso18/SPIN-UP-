@@ -10,7 +10,6 @@
 #include <deque>
 
 
-
 class Robot
 {
 public: 
@@ -139,19 +138,33 @@ public:
  /*Actualiza los valores de las Coordenadas */
  static void updatePosicion(void);
 
+/////////////////////////////////////////////AUTONOMO///////////////////////////////////////////////////////////////////////////////
  /*Mueve el robot a una determinada coordenada y posición, usando dos controladores PID
    Modo_facing -> Mueve el robot a una determinada coordenada y una coordenada a apuntar*/
- static void Odom_Movement(double(*fuctPtr_Mode)(double,double,double),std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY);
+ static void Odom_Movement(double(*fuctPtr_Mode)(double,double,double),std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY, float offset);
  
  /*Mueve el robot con PID,  Modo 1:lineal , Modo 2: giros*/
- static void PID_Movement(void(*fuctPtr_Mode)(double,double),std::vector<double>posicion,std::vector<double>DrivePID,std::vector<double> TurnPID,double tiempo);
-
- static void move_to_pure_pursuit(std::vector< std::vector<double> > points, std::vector<double> final_point, int lookAheadDistance);
-
+ static void Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacion,std::vector<double> TurnPID,double tiempo, float TargetX, float TargetY,float offset);
+ 
+ /*Funcion para ver el comportamiento de reacción del sistema y después poder tunearlo correctamente*/
+ static void tune_pid(float tiempo, float step_percent); 
+ 
+ /*Función para indicarle un vector de coordenadas y que el robot pueda seguirlas*/
  static void python_movement( double(*fuctPtr_mode)(double,double,double),std::vector<double> X, std::vector<double> Y, float tiempo);
+ 
+ /*Mueve el flywheel a una determinada velocidad medida en RPM 
+   Dispara las veces que se le indica siempre y cuando esté estabilizado*/
+ static void Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disparos); 
+ 
+ /*Activa o desactiva el intake
+  True -> Intake Recoje discos
+  False -> Intake Deja de Recojer discos*/
+ static void eat (bool state); 
+ 
+ /*Mueve el intake para que poder girar el roller*/
+ static void Move_Roller(float distancia, int vel); 
 
- //Controlador del flywheel
- static void move_flywheel(int RPM, float tiempo);
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
  /*Modo driver del robot */
  //Modo driver
@@ -162,8 +175,9 @@ public:
  static void move_Flywheel(int power);
  //Mueve el Intake con una entrada de voltaje (mV)
  static void move_Intake(int power);
- //Acciona el disparador dependiendo de la entrada (bool)
- static void move_Indexer(void); 
+ //Mueve el indezer con una entrada de voltaje (mV)
+ static void move_Indexer(int power); 
+
  //PID de modo driver, setea un angulo durante el periodo Driver, el robot se quedara anclado
  //En la posicion que se ha indicado, puedes desaclarlo moviendo el joytisck derecho
  static void PID_drift(void *ptr);

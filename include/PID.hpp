@@ -35,6 +35,7 @@ extern PID_Control DRIVE;
 //Objeto para el compensador de orientacion 
 extern PID_Control TURN;
 
+extern PID_Control FLYWHEEL; 
 
 
 #endif
