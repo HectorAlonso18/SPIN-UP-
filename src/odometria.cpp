@@ -29,9 +29,18 @@ double get_angle_pro(std::vector<double> Current, std::vector<double> Target){
     //dx= X2 -X1
 	double dx = Target[0] - Current[0]; 
     
-    //Calculamos el angulo, utilizando arco tangente, pero con el plano desfasado para que concuerda con el del robot
-	double Angulo =  TO_DEGREES (atan2(dx, dy));
+    int sign_dy = dy>0 ? 1 : dy<0 ? -1 : sign_dy; 
+    int sign_dx = dx>0 ? 1 : dx<0 ? -1 : sign_dx; 
 
+    //Calculamos el angulo, utilizando arco tangente, pero con el plano desfasado para que concuerda con el del robot
+
+	double Angulo =  TO_DEGREES (atan2(dx, dy));
+    
+    //Diferentes escenerios, dependiendo de los valores y signos de dy y dx, podemos setear
+    //El angulo correspondiente que con el calculo normal del Angulo no es posible obtener el valor 
+    //Correcto del angulo entre los dos puntos. 
+    Angulo = dx==0 && sign_dy ==-1 ? 180 : dy==0 && sign_dx==1 ? 90 : dy==0 && sign_dx==-1 ? 270 : Angulo; 
+    
     //El resultado lo ponemos en un rango de 0-360
 	Angulo = reducir_angulo_0_360(Angulo);
 	
@@ -58,20 +67,6 @@ double Control_move_facing_to(double Orientacion,double TargetX,double TargetY){
     Orientacion= get_angle_pro({Robot::absGlobalX,Robot::absGlobalY}, {TargetX,TargetY});
     return Orientacion;
 }
-
-
-void Control_PID_lineal(double finalpower, double finalpower_turn){
-    //Se desprecia el final power turn y solo se admite el del finalpower normal
-    finalpower=finalpower;
-    finalpower_turn=0;
-}
-
-void Control_PID_turn(double finalpower,double finalpower_turn){
-    //SE desprecia el final power normal y solo se admite el finalpower turn
-    finalpower=0;
-    finalpower_turn=finalpower_turn;
-}
-
 
 
 
