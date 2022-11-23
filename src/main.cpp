@@ -1,4 +1,6 @@
 #include "main.h"
+#include "parametros.h"
+#include "pros/rtos.hpp"
 #include <iostream>
 #include <vector>
 
@@ -17,7 +19,7 @@ void competition_initialize() {}
 
 
 void autonomous() {
-		Robot::start_task("TRACKING", Robot::raestro);
+	Robot::start_task("TRACKING", Robot::raestro);
     
 	//Recuerda que puedes dejar el cursor en cada funcion y te da una descripción de que hace y que parametros recibe 
 
@@ -116,7 +118,8 @@ void autonomous() {
 	Robot::eat(false);
 	Robot::Flywheel_pid(2760, {.01535,.00000525,4.05}, 3);
 	//Robot::eat(false);
-	//Robot::Odom_Movement(fuctPtr_move_to, {30,28,0}, Drive_Constant, Turn_Constant, 3, 0,0,0);}
+	//Robot::Odom_Movement(fuctPtr_move_to, {30,28,0}, Drive_Constant, Turn_Constant, 3, 0,0,0);
+}
 
 //184
 
@@ -124,7 +127,6 @@ void opcontrol() {
 
 	Robot::start_task("DRIVE", Robot::drive);
     Robot::start_task("TRACKING", Robot::raestro);
-	
- 
+    
    
 }

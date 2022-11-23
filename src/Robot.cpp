@@ -222,12 +222,12 @@ void Robot::updatePosicion(void){
 
     prevOrientacionRad = absOrientacionRad;
 
-    //std::cout<<"\nCoordenada X "<<Robot::absGlobalX;
-    //std::cout<<"\tCoordenada Y \t"<<Robot::absGlobalY;
+    std::cout<<"\nCoordenada X "<<Robot::absGlobalX;
+    std::cout<<"\tCoordenada Y \t"<<Robot::absGlobalY;
     //std::cout<<"\tAngulo \t"<<Robot::absOrientacionDeg;
 }
 
-void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY,float offset){
+void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY,float offset){
      
      /*
      Calculos necesarios para despues continuar con el ciclo de PID
@@ -307,6 +307,9 @@ void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),std::vecto
 
         DRIVE.finalpower= DRIVE.finalpower > 180 ? 180 : DRIVE.finalpower < -180 ? -180:DRIVE.finalpower;
         TURN.finalpower= TURN.finalpower > 150 ? 150 : TURN.finalpower < -150 ? -150:TURN.finalpower;
+
+        DRIVE.finalpower *= potencia;
+        TURN.finalpower *= potencia;
 
         Robot::LeftFront_1.move_velocity(DRIVE.finalpower*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))+TURN.finalpower) ;
         Robot::LeftFront_2.move_velocity(DRIVE.finalpower*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))+TURN.finalpower);
@@ -442,11 +445,11 @@ void Robot::tune_pid(float tiempo, float step_percent){
     }
 } 
 
-void Robot::python_movement(double(*fuctPtr_mode)(double,double,double),std::vector<double> X, std::vector<double> Y, float tiempo){
+void Robot::python_movement(double(*fuctPtr_mode)(double,double,double),double potencia,std::vector<double> X, std::vector<double> Y, float tiempo){
     //Ciclo for que navega a traves del vector X
     for(auto i=0; i<X.size(); i++){
         //Mientras lo navega correra la función de Odom_Movement
-        Odom_Movement(fuctPtr_mode, {X[i],Y[i],0}, Drive_Constant, Turn_Constant, tiempo, 0,0,0);
+        Odom_Movement(fuctPtr_mode, potencia,{X[i],Y[i],0}, Drive_Constant, Turn_Constant, tiempo, 0,0,0);
     }
 }
 
@@ -529,13 +532,13 @@ void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disp
         } 
         
         //Condicion para parar el flywheel, si se realizarón el numero de disparos deseados.
-        paro = disparo==n_disparos ? true : false; 
+        paro = disparo==n_disparos+1 ? true : false; 
 
-        std::cout<<"\n"<<contador;
+        /*std::cout<<"\n"<<contador;
         std::cout<<"\t"<<velocidad;
         std::cout<<"\t"<<RPM;
         std::cout<<"\t"<<estabilizooo;  
-        std::cout<<"\t"<<disparo;
+        std::cout<<"\t"<<disparo;*/
         
         pros::delay(10);
         contador+=10;   
@@ -546,7 +549,6 @@ void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disp
 
 }
 
- 
 void Robot::eat (bool state){
     int power_eat = state ==true  ? 12000 : state ==false ? 0 : power_eat;
     intaker_1.move_voltage(power_eat);  
