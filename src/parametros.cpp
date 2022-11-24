@@ -18,7 +18,7 @@ std::vector<double>Turn_Constant={1.5,0.00150,1.7};
 
 
 //Constantes del PID para Flywheel
-std::vector<double> Flywheel_Constant = {0,0,0};
+std::vector<double> Flywheel_Constant ={.01535,.00000525,4.05};
 
 double(*fuctPtr_move_to)(double,double,double) = Control_move_to;
 double(*fuctPtr_facing_to)(double,double,double)= Control_move_facing_to;

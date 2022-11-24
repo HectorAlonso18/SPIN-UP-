@@ -27,6 +27,8 @@
 //Puerto 1, 4  no jala
 
 //Robot morado
+
+
 pros::Motor Robot::LeftFront_1(2,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
 pros::Motor Robot::LeftFront_2(3,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
 
@@ -224,7 +226,7 @@ void Robot::updatePosicion(void){
 
     std::cout<<"\nCoordenada X "<<Robot::absGlobalX;
     std::cout<<"\tCoordenada Y \t"<<Robot::absGlobalY;
-    //std::cout<<"\tAngulo \t"<<Robot::absOrientacionDeg;
+    std::cout<<"\tAngulo \t"<<Robot::absOrientacionDeg;
 }
 
 void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY,float offset){
@@ -453,8 +455,8 @@ void Robot::python_movement(double(*fuctPtr_mode)(double,double,double),double p
     }
 }
 
-void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disparos){
-
+void Robot:: Flywheel_pid_shoot (double RPM,std::vector<double>FlywheelPID, int n_disparos,float delay){
+    Rotacion.reset(); 
     //Puedes quitar las impresiones o utilizralas para ver como está el pedo
 
     FLYWHEEL.kp = FlywheelPID[0];
@@ -472,6 +474,12 @@ void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disp
     int contador=0; 
     
     float velocidad=0;
+    Fil::kalman.filter(0);  
+
+    for(int i= 0 ; i<50 ; i++){
+        velocidad= Fil::kalman.filter(0); 
+        pros::delay(10); 
+    }
 
     int disparo=0; 
 
@@ -481,9 +489,11 @@ void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disp
     n_disparos= n_disparos>3 ?3 : n_disparos; 
 
     std::cout<<"\nZona Integral: "<<FLYWHEEL.zonaintegralactiva;
+
+    pros::delay(10);
     
     while(paro==false){
-        
+          
         //Filtrado de la velocidad en RPM  esta esta manera de hacerlo o está otra
         velocidad = Fil::kalman.filter(Rotacion.get_velocity()/6)  ;
         //velocidad= Fil::kalman.filter(((Rotacion.get_velocity()/100)/.01)/6) pero según yo da lo mismo 
@@ -522,7 +532,7 @@ void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disp
             
             //Se pone un delay para darle tiempo al brian de darse cuenta que se desestabilizo el flywheel
             //Puedes probar disminuyendo hasta cual es lo minimo necesario
-            pros::delay(500);  
+            pros::delay(500+delay);  
                                              
             disparo++; //Con este incrementamos una variable para saber cuantos disparamos llevamos
         }
@@ -532,13 +542,13 @@ void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disp
         } 
         
         //Condicion para parar el flywheel, si se realizarón el numero de disparos deseados.
-        paro = disparo==n_disparos+1 ? true : false; 
+        paro = disparo==n_disparos ? true : false; 
 
-        /*std::cout<<"\n"<<contador;
-        std::cout<<"\t"<<velocidad;
-        std::cout<<"\t"<<RPM;
-        std::cout<<"\t"<<estabilizooo;  
-        std::cout<<"\t"<<disparo;*/
+        //std::cout<<"\n"<<contador;
+        //std::cout<<"\t"<<velocidad;
+        //std::cout<<"\t"<<RPM;
+        //std::cout<<"\t"<<estabilizooo;  
+        //std::cout<<"\t"<<disparo;
         
         pros::delay(10);
         contador+=10;   
@@ -548,6 +558,71 @@ void Robot:: Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disp
     Flywheel_2.move_voltage(0);
 
 }
+
+void Robot::Flywheel_pid(void*ptr){
+     Rotacion.reset(); 
+    //Puedes quitar las impresiones o utilizralas para ver como está el pedo
+   
+
+    FLYWHEEL.kp =.01535 ;
+    FLYWHEEL.ki =.00000525 ;
+    FLYWHEEL.kd=4.05 ; 
+
+    FLYWHEEL.integral_raw=0;
+    FLYWHEEL.last_error=0;
+
+    FLYWHEEL.zonaintegralactiva = 2500* .45;
+    FLYWHEEL.integralpowerlimit = 50/FLYWHEEL.ki; 
+    
+    bool paro = false; 
+
+    int contador=0; 
+    
+    float velocidad=0;
+
+
+    std::cout<<"\nZona Integral: "<<FLYWHEEL.zonaintegralactiva;
+
+    pros::delay(10);
+    
+    while(paro==false){
+        
+        //Filtrado de la velocidad en RPM  esta esta manera de hacerlo o está otra
+        velocidad = Fil::kalman.filter(Rotacion.get_velocity()/6)  ;
+        //velocidad= Fil::kalman.filter(((Rotacion.get_velocity()/100)/.01)/6) pero según yo da lo mismo 
+        
+        //calculo del error
+        FLYWHEEL.error = 2500 - velocidad;
+
+        FLYWHEEL.proporcion = FLYWHEEL.kp * FLYWHEEL.error;
+
+        if (fabs (FLYWHEEL.error) > FLYWHEEL.zonaintegralactiva && FLYWHEEL.error !=0){FLYWHEEL.integral_raw=0;}
+
+        else{FLYWHEEL.integral_raw += FLYWHEEL.error;}
+
+        FLYWHEEL.integral_raw = FLYWHEEL.integral_raw > FLYWHEEL.integralpowerlimit ? FLYWHEEL.integralpowerlimit : FLYWHEEL.integral_raw < -FLYWHEEL.integralpowerlimit ? -FLYWHEEL.integralpowerlimit : FLYWHEEL.integral_raw;
+        FLYWHEEL.integral = FLYWHEEL.ki * FLYWHEEL.integral_raw; 
+
+        FLYWHEEL.derivada = FLYWHEEL.kd*(FLYWHEEL.error - FLYWHEEL.last_error);
+        FLYWHEEL.last_error = FLYWHEEL.error; 
+        
+        //Manera de clampear el finalpower. 
+        FLYWHEEL.finalpower += ceil (FLYWHEEL.proporcion + FLYWHEEL.integral + FLYWHEEL.derivada);
+
+        Robot::FlyWheel_1.move_voltage(FLYWHEEL.finalpower);
+        Robot::Flywheel_2.move_voltage(FLYWHEEL.finalpower);
+        
+        if(fabs(FLYWHEEL.error)<50){
+            paro=true; 
+        }
+        
+        pros::delay(10);
+        contador+=10;   
+    } 
+    
+}
+
+
 
 void Robot::eat (bool state){
     int power_eat = state ==true  ? 12000 : state ==false ? 0 : power_eat;
