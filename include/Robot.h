@@ -154,7 +154,9 @@ public:
  
  /*Mueve el flywheel a una determinada velocidad medida en RPM 
    Dispara las veces que se le indica siempre y cuando esté estabilizado*/
- static void Flywheel_pid (double RPM,std::vector<double>FlywheelPID, int n_disparos); 
+ static void Flywheel_pid_shoot (double RPM,std::vector<double>FlywheelPID, int n_disparos, float delay); 
+
+ static void Flywheel_pid(void*ptr); 
 
  /*Activa o desactiva el intake
   True -> Intake Recoje discos
