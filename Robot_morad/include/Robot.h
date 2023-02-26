@@ -1,6 +1,7 @@
 #include "main.h"
 #include "pros/adi.hpp"
 #include "pros/rotation.hpp"
+#include "okapi/api.hpp"
 
 #include <atomic>
 #include <map>
@@ -30,14 +31,20 @@ public:
 
  static pros::Motor intaker_1;
  static pros::Motor intaker_2;
-
+ 
  static pros::Motor Indexer;
+
+ static pros::Motor expansion; 
 
  static pros::Imu gyro;
  static pros::Rotation Rotacion; 
 
  static pros::ADIEncoder Encoder_Derecho;
  static pros::ADIEncoder Encoder_back;
+
+ static pros::ADIMotor Red_led;
+ static pros::ADIMotor Blue_led;  
+
 
  static pros::Controller master;
 
@@ -124,73 +131,91 @@ public:
  static double High_GoalX;
  //Coordenada en Y
  static double High_GoalY;
+
+ //RPM para flywheel
+ static int RPM; 
+ 
+
+ static std::atomic<bool> Ready_to_shoot; 
+
+
  
  //Variable necesaria para el PID en el modo driver, es el final Power
- static std::atomic<double> turn_joytick;
+ static std::atomic<double> turn_drift;
 
  /*Raestrea la posicion y orientacion del robot usando odometria*/
- static void raestro(void *ptr);
- /*Imprime las coordenadas X, Y , Orientacion */
- static void get_data(void);
+ static void rastreo(void *ptr);
  
+ /*Raestra unicamente la orientacion del robot usando el sensor de inercia*/
+ static void track_orientation(void *ptr); 
+
  /*Actualiza los valores de los Encoders */
  static void updateEncoders(void);
+
  /*Actualiza los valores de las Coordenadas */
  static void updatePosicion(void);
+ 
+ /*Limpiar valores de filtro kalman*/
+ static float clean_readings(okapi::EKFFilter KALMAN);
 
-
- static void Update_gyro(void);
-
-/////////////////////////////////////////////AUTONOMO///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////AUTONOMO//////////////////////////////////////////////////////////////////////
  /*Mueve el robot a una determinada coordenada y posición, usando dos controladores PID
    Modo_facing -> Mueve el robot a una determinada coordenada y una coordenada a apuntar*/
- static void Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY, float offset);
+ static void Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo_sec, double TargetX, double TargetY);
  
- static void PID_chassis(float unidades,float Orientacion,float potencia ,float tiempo);
-
+ 
  /*Mueve el robot con PID,  Modo 1:lineal , Modo 2: giros*/
- static void Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacion,float potencia,std::vector<double> TurnPID,double tiempo, float TargetX, float TargetY,float offset);
+ static void Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacion,float potencia,std::vector<double> TurnPID,double tiempo_sec, float TargetX, float TargetY, float Turn_offset);
  
  /*Funcion para ver el comportamiento de reacción del sistema y después poder tunearlo correctamente*/
- static void tune_pid(float tiempo, float step_percent); 
+ static void tune_pid(float tiempo_sec, float step_percent, pros::motor_gearset_e Gearset, std::vector<pros::Motor> Motores,std::string Entrada); 
  
  /*Función para indicarle un vector de coordenadas y que el robot pueda seguirlas*/
- static void python_movement( double(*fuctPtr_mode)(double,double,double),double potencia,std::vector<double> X, std::vector<double> Y, float tiempo);
+ static void follow_path( double(*fuctPtr_mode)(double,double,double),double potencia,std::vector<double> X, std::vector<double> Y, float tiempo_sec);
  
  /*Mueve el flywheel a una determinada velocidad medida en RPM 
    Dispara las veces que se le indica siempre y cuando esté estabilizado*/
- static void Flywheel_pid_shoot (double RPM,std::vector<double>FlywheelPID, float potencia, int n_disparos, float delay); 
-
- static void Flywheel_pid(void*ptr); 
-
-
-
+ static void Flywheel_PID (void*ptr); 
+ 
+ static void Shoot_PID(int disparos ,std::string mode ,int delay_msec); 
+ 
+ static void Shoot_normal(int disparos, int velocity_RPM); 
 
  /*Activa o desactiva el intake
   True -> Intake Recoje discos
   False -> Intake Deja de Recojer discos*/
- static void eat (int voltage); 
+ static void eat (int RPM); 
  
- /*Mueve el intake para que poder girar el roller*/
- static void Move_Roller(float distancia, int vel); 
+ static void Move_Roller_pos(float Position, int RPM); 
 
-/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+ static void Move_Indexer_pos(float Position, int RPM); 
 
- /*Modo driver del robot */
+ static void Turn_lights(int mode); 
+
+ static void Lights(int _red, int _blue); 
+
+ static void Release_expansion(bool state); 
+
  //Modo driver
  static void drive(void *ptr);
  //Calculos necesarios para mover un X-Drive
- static void x_drive(double power, double strafe_lf_rb, double strafe_rf_lb, double turn);
+ static void x_drive(double power, double strafe_lf_rb, double strafe_rf_lb, double turn, std::string name);
  //Mueve el Flywheel con una entrada de voltaje (mV)
  static void move_Flywheel(int power);
  //Mueve el Intake con una entrada de voltaje (mV)
  static void move_Intake(int power);
- //Mueve el indezer con una entrada de voltaje (mV)
- static void move_Indexer(int power); 
+ //Mueve el indezer con una entrada de velocidad(RPM)
+ 
+ static void move_Indexer_velocity(int RPM); 
+ //Establece el indexer a una posición adecuada
+ static void set_Indexer(bool state, int RPM, std::string mode);
 
  //PID de modo driver, setea un angulo durante el periodo Driver, el robot se quedara anclado
  //En la posicion que se ha indicado, puedes desaclarlo moviendo el joytisck derecho
- static void PID_drift(void *ptr);
+ static void PID_drift_Cesar(void *ptr);
+
+ static void PID_drift_Alex_four(void *ptr); 
+ static void PID_drift_Alex_double(void*ptr);
 
  /*setear el tipo de frenado */
  static void brake(std::string mode);

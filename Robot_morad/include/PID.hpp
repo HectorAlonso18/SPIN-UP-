@@ -23,6 +23,8 @@ typedef struct{
 	float proporcion; 
 	float integral;
 	float derivada;
+
+	int maximo;
 	
 	float finalpower;            							
  
@@ -37,5 +39,14 @@ extern PID_Control TURN;
 
 extern PID_Control FLYWHEEL; 
 
+extern float Get_Proporcion (PID_Control Compensator);
+
+extern float Get_Integral_raw (PID_Control Compensator);
+
+extern float Get_Integral(PID_Control Compensator); 
+
+extern float Get_Derivada(PID_Control Compensator);
+
+extern float Get_Pid_Output(PID_Control Compensator, float potencia); 
 
 #endif

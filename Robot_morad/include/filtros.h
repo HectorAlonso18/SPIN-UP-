@@ -10,4 +10,6 @@ extern okapi::EmaFilter ema_filtro; //Filtro ema, se utiliza en las lecturas del
 
 }
 
+
+
 #endif
