@@ -1,9 +1,12 @@
 #include "main.h"
 #include "parametros.h"
 #include "pros/rtos.hpp"
+#include <algorithm>
 #include <iostream>
 #include <ostream>
+#include <regex>
 #include <vector>
+
 
 
 void initialize() {
@@ -20,79 +23,116 @@ void competition_initialize() {}
 
 
 void autonomous() {
-	Robot::start_task("TRACKING", Robot::raestro);
     
-	//Enciede el intaker
-	Robot::eat(12000);
-	pros::delay(200);
+	/* Pendientes: 
+	-> Verificar si el brian puede abrir la terminal.
+    -> Tunear de nuevo el PID del flywheel. 
+	-> Probar las funciones de disparo. 
+	-> Poner ligas en los encoders para tener mejor precision. 
+	-> Verificar las task de PID_DRIFT y verificar que jalen. 
+	*/
+    
 
-	//El robot toma el primer disco
-	//Robot::Odom_Movement(fuctPtr_move_to,1, {1.8,6.8,316}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-	Robot::Odom_Movement(fuctPtr_move_to,1, {-2.5,12,360-45}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-    pros::delay(250); 
 	
-	//Hace recorrido para asegurar el disco
-	Robot::Odom_Movement(fuctPtr_move_to,0.25, {0,9,0}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-    Robot::Odom_Movement(fuctPtr_move_to,0.75, {12,9,90}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-	Robot::eat(0);
-	Robot::Move_Roller(2000, 200);
-	//Se acerca al roller
+	//El robot va por el primer disco y lo come
+	Robot::eat(200); 
 
-	Robot::Odom_Movement(fuctPtr_move_to,1, {-6,8,180}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-	pros::delay(500);
+	//Iniciamos task necesarias para hacer la rutina
+    Robot::start_task("gps", Robot::rastreo);    
 	
+	Robot::RPM=3300; 
+	Robot::start_task("flywheel_pid", Robot::Flywheel_PID); 
+    
 
-	Robot::Odom_Movement(fuctPtr_move_to,1, {-6,6,180}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-	//Gira el roller
-	Robot::Move_Roller(385, 180);
-	pros::delay(250);
+    Robot::Odom_Movement(Control_move_to, .5, {-16,10,360-90}, Drive_Constant, Turn_Constant, 2, 0, 0);
+	
+	pros::delay(1500); 
+    
+	//Apunta a la canasta para poder empezar con la serie de 3 disparos
+	//.33
+	Robot::Turning(Control_move_to, 117,1, Turn_Constant, 1.25,0,0,0);
+    
+	pros::delay(1000); 
+	
+	//Primer tres tiros. 
+	Robot::Shoot_PID(1, "LONG", 1000); 
+	pros::delay(1000); 
+	Robot::Shoot_PID(1, "LONG", 1000); 
+	pros::delay(1000); 
+	Robot::Shoot_PID(1, "LONG", 1000); 
+    
 
-	//Se dirige a posición de tirar
-	Robot::Odom_Movement(fuctPtr_move_to,1, {3,12,180-2}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-    //Dispara
-	Robot::Flywheel_pid_shoot(2900,{.01535,.00000525,4.05},1, 3,175);
-
-	//Va hacia la esquina
-	Robot::Odom_Movement(fuctPtr_move_to,1, {35,12,90}, Drive_Constant,Turn_Constant, 2, 0,0,0);
-	Robot::Odom_Movement(fuctPtr_move_to,1, {50,22.5,90}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-
-	//Empieza a comer 
-	//Primer disco
-	Robot::eat(12000);
-	Robot::Odom_Movement(fuctPtr_move_to,1, {65,22.5,90}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-	Robot::Odom_Movement(fuctPtr_move_to,1, {50,22.5,90}, Drive_Constant,Turn_Constant, 3, 0,0,0);
+	//Ahora pondre para que pueda ir por el roller
+	Robot::Odom_Movement(Control_move_to, .75, {14  ,34,92}, Drive_Constant, Turn_Constant, 1.5, 0, 0);
+    pros::delay(10); 
+	Robot::Move_Roller_pos(800, 100); 
 
 
 /*
+	//Comentaré esto debido a que quiero probar las funciones básicas para poder tirar los primeros tres discos
 
-
-	Robot::eat(0);
-
-	//Se acerca al roller
-	Robot::Odom_Movement(fuctPtr_move_to, 1,{-8.5,0.5,180}, Drive_Constant,Turn_Constant, 2, 0,0,0);
-	//Gira Roller
-	Robot::Move_Roller(338, 180);
     
-	pros::delay(500); 
+	//El robot va por el disco que está en la linea 
+	Robot::eat(200); 
+    Robot::Odom_Movement(Control_move_to, 1, {-24.5,15.5,360-45}, Drive_Constant, Turn_Constant, 2, 0, 0);
     
-	Robot::Odom_Movement(fuctPtr_move_to, 1,{-8.5,6,180}, Drive_Constant,Turn_Constant, 1, 0,0,0);
+	//Velocidad para el segundo tiro
+	Robot::RPM=3300;
+	pros::delay(1000);
 
-	//5
-	Robot::Odom_Movement(fuctPtr_move_to, 1,{8,8,157}, Drive_Constant,Turn_Constant, 3, 0,0,0);
-
-	//Realiza tiro
-	pros::delay(10); 
-    Robot::Flywheel_pid_shoot(2890,{.01535,.00000525,4.05},1, 3,125);
-	pros::delay(100); 
-
-  */
+	//Se perfila para la diagonal para poder tomar los otros dos discos
+	Robot::Odom_Movement(Control_move_to, 1, {-23,8,360-135}, Drive_Constant, Turn_Constant, 2, 0, 0); 
 	
+	//Come los dos discos   //.3
+	Robot::Odom_Movement(Control_move_to, .1, {-52 ,-26,360-135}, Drive_Constant, Turn_Constant, 6, 0, 0);
+	
+    //Delay para asegurar el disco
+	pros::delay(1500); 
+
+	//Apunta a la canasta para poder empezar con la serie de 3 disparos
+	Robot::Turning(Control_move_facing_to, 0,.33, Turn_Constant, 1.25, Robot::High_GoalX, Robot::High_GoalY,-173);
+
+  	
+	//Segunda tanda de tiros
+    pros::delay(1000); 
+
+	Robot::Shoot_PID(1, "LONG", 1000); 
+	pros::delay(750); 
+	Robot::Shoot_PID(1, "LONG", 1000); 
+	pros::delay(1000); 
+	Robot::Shoot_PID(1, "LONG", 1000); 
+    
+    
+	//Seccion para hacer el tercer tiro 
+    
+	//Va hacía la escuadra y se prepara para poder tomar otros 3 discos
+	Robot::Odom_Movement(Control_move_to, .4, {-28  ,-22,135}, Drive_Constant, Turn_Constant, 4, 0, 0);
+	Robot::Odom_Movement(Control_move_to, .2, {-5  ,-29,135}, Drive_Constant, Turn_Constant, 4, 0, 0);
+    
+	pros::delay(10);
+    */
+
+	/*
+    //Se acomoda para girar el roller
+	Robot::Odom_Movement(Control_move_to, .75, {-5  ,34,92}, Drive_Constant, Turn_Constant, 5, 0, 0);
+    Robot::eat(0); 
+	pros::delay(250);  
+	Robot::Odom_Movement(Control_move_to, .75, {14  ,34,92}, Drive_Constant, Turn_Constant, 1.5, 0, 0);
+    pros::delay(10); 
+	Robot::Move_Roller_pos(800, 100); 
+    */
+
 
 }
 
 
 
 void opcontrol() {
-	Robot::start_task("DRIVE", Robot::drive);
-
+	
+	
+	Robot::start_task("GET_ORIENTATION",Robot::track_orientation); 
+	Robot::start_task("PID_DRIFT", Robot::PID_drift_Alex_double); 
+	Robot::start_task("PID_FLYWHEEEL", Robot::Flywheel_PID); 
+	Robot::start_task("drive", Robot::drive);
+    
 }

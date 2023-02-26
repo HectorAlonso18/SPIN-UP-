@@ -1,11 +1,14 @@
 #include "PID.hpp"
 #include "Purepursuit.h"
+#include "auxiliar_fuctions.h"
+#include "display/lv_hal/lv_hal_indev.h"
 #include "filtros.h"
 #include "main.h"
 
 #include "odometria.h"
 #include "parametros.h"
 #include "pros/misc.h"
+#include "pros/misc.hpp"
 #include "pros/motors.h"
 #include "pros/rotation.hpp"
 #include "pros/rtos.hpp"
@@ -19,38 +22,75 @@
 #include <unordered_map>
 #include <deque>
 #include <bits/stdc++.h> 
-
+#include "okapi/api.hpp"
 //Lambda fuction, para convertir de grados a radianes
 #define TO_RAD(n) n * M_PI / 180;
 
-pros::Motor Robot::LeftFront_1(1,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor Robot::LeftFront_2(2,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
 
-pros::Motor Robot::LeftBack_1(11,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor Robot::LeftBack_2(12,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
+#define PORT_LEFT_FRONT_1 1 
+#define PORT_LEFT_FRONT_2 2 
 
-pros::Motor Robot::RightFront_1(10,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor Robot::RightFront_2(9,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
+#define PORT_LEFT_BACK_1 11
+#define PORT_LEFT_BACK_2 12 
+
+#define PORT_RIGHT_FRONT_1 10 
+#define PORT_RIGHT_FRONT_2 9
+
+#define PORT_RIGHT_BACK_1 20 
+#define PORT_RIGHT_BACK_2 18 
+
+//Puerto de robot morad  4
+//Puerto de brain de prueba 5
+#define PORT_FLYWHEEL_1 4
+#define PORT_FLYWHEEL_2 3 
+
+#define PORT_INTAKER_1 7 
+#define PORT_INTAKER_2 8 
+
+#define PORT_INDEXER 13 
+
+#define PORT_EXPANSION 14 
+
+#define PORT_GYRO 6
+
+//Deberia de robot morado 5
+//PUerto de brain de prueba 19
+#define PORT_ROTATION 5
+
+pros::Motor Robot::LeftFront_1(PORT_LEFT_FRONT_1,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::LeftFront_2(PORT_LEFT_FRONT_2,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
+
+pros::Motor Robot::LeftBack_1(PORT_LEFT_BACK_1,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::LeftBack_2(PORT_LEFT_BACK_2,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
+
+pros::Motor Robot::RightFront_1(PORT_RIGHT_FRONT_1,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::RightFront_2(PORT_RIGHT_FRONT_2,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
 
 
-pros::Motor Robot::RightBack_1(20,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor Robot::RightBack_2(14,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::RightBack_1(PORT_RIGHT_BACK_1,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::RightBack_2(PORT_RIGHT_BACK_2,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
 
-pros::Motor Robot::FlyWheel_1(4,pros::E_MOTOR_GEARSET_06,false,pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor Robot::Flywheel_2(3,pros::E_MOTOR_GEARSET_06,true,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::FlyWheel_1(PORT_FLYWHEEL_1,pros::E_MOTOR_GEARSET_06,true,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::Flywheel_2(PORT_FLYWHEEL_2,pros::E_MOTOR_GEARSET_06,false,pros::E_MOTOR_ENCODER_DEGREES);
 
-pros::Motor Robot::intaker_1(7,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
-pros::Motor Robot::intaker_2(8,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::intaker_1(PORT_INTAKER_1,pros::E_MOTOR_GEARSET_18,true,pros::E_MOTOR_ENCODER_DEGREES);
+pros::Motor Robot::intaker_2(PORT_INTAKER_2,pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
 
-pros::Motor Robot::Indexer(13, pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
- 
-pros::Imu Robot::gyro(6);
+pros::Motor Robot::Indexer(PORT_INDEXER, pros::E_MOTOR_GEARSET_18,false,pros::E_MOTOR_ENCODER_DEGREES);
 
-pros::Rotation Robot::Rotacion(19);
+pros::Motor Robot::expansion (PORT_EXPANSION,pros::E_MOTOR_GEARSET_36,true,pros::E_MOTOR_ENCODER_DEGREES);  
 
+pros::Imu Robot::gyro(PORT_GYRO);
+
+pros::Rotation Robot::Rotacion(PORT_ROTATION);
 
 pros::ADIEncoder Robot::Encoder_Derecho('G','H',true);
+
 pros::ADIEncoder Robot::Encoder_back('E','F',true);
+
+pros::ADIMotor Robot::Red_led('D');
+pros::ADIMotor Robot::Blue_led('C');  
+
 
 pros::Controller Robot::master(pros::E_CONTROLLER_MASTER);
  
@@ -67,13 +107,14 @@ bool Robot::task_exists(std::string name) {
 }
 
 void Robot::kill_task(std::string name) {
-    if (task_exists(name)) {
+   
+    if (task_exists(name)==false) {
 		tasks.erase(name);
 	}
 }
  
-double Robot::Distancia_Encoder_Y=1; 
-double Robot::Distancia_Encoder_X=1;
+double Robot::Distancia_Encoder_Y=.01; 
+double Robot::Distancia_Encoder_X=.01;
   
 double Robot::radioY=1.5627;
 double Robot::radioX=1.5627;
@@ -110,31 +151,31 @@ double Robot::EncoderX_Actual=0;
 
 double Robot::prev_A=0;
 
-double Robot::High_GoalX=5.06;
-double Robot::High_GoalY=96.73;
+double Robot::High_GoalX=-100;
+double Robot::High_GoalY=47.5;
 
-std::atomic<double> Robot::turn_joytick=0;
+int Robot::RPM=0; 
 
-void Robot::raestro(void *ptr){
+
+std::atomic<bool> Robot::Ready_to_shoot=false;
+
+std::atomic<double> Robot::turn_drift=0;
+
+void Robot::rastreo(void *ptr){
     while(true){
         updateEncoders();
         updatePosicion();
-
-        //Tiempo de actualizacion 
         pros::delay(10);
     }
 }
 
-void Robot::get_data(void){
-    //Impresion durante 10 segundos
-    for(auto i=0; i<=1000; i++){
-        std::cout<<"\nHeading: "<<"\t"<<Robot::absOrientacionDeg;
-	    std::cout<<"\tX: "<<"\t"<<Robot::absGlobalX;
-	    std::cout<<"\tY: "<<"\t"<<Robot::absGlobalY; 
-	    pros::delay(10);
-	    i+=10;
+void Robot::track_orientation(void *ptr){
+    while (true) {
+        absOrientacionDeg= gyro.get_heading();
+        absOrientacionRad = TO_RAD(absOrientacionDeg);
+        pros::delay(10);   
     }
-}
+} 
 
 void Robot::updateEncoders(void){
     /* 
@@ -167,9 +208,9 @@ void Robot::updatePosicion(void){
 
     absOrientacionRad= TO_RAD(absOrientacionDeg);
     
-    float angle_gyro_Rad= TO_RAD(gyro.get_heading());
-    float delta_A= angle_gyro_Rad-prev_A;
-    prev_A=angle_gyro_Rad;
+    //float angle_gyro_Rad= TO_RAD(gyro.get_heading());
+    float delta_A= absOrientacionRad-prev_A;
+    prev_A=absOrientacionRad;
 
     //Si no hay cambio en el ángulo el local offset será igual a cero
     if(delta_A==0){
@@ -226,12 +267,19 @@ void Robot::updatePosicion(void){
     std::cout<<"\tAngulo \t"<<Robot::absOrientacionDeg;
 }
 
-void Robot::Update_gyro(void){
-    absOrientacionDeg= gyro.get_heading();
-    std::cout<<"\nAngulo "<<Robot::absOrientacionDeg;
+float Robot::clean_readings(okapi::EKFFilter KALMAN){
+    float velocidad=0; 
+    KALMAN.filter(0);
+    for(int i= 0 ; i<50 ; i++){
+        velocidad= KALMAN.filter(0); 
+        pros::delay(10); 
+    }
+    
+    return velocidad;
 }
 
-void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo, double TargetX, double TargetY,float offset){
+
+void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo_sec, double TargetX, double TargetY){
      
      /*
      Calculos necesarios para despues continuar con el ciclo de PID
@@ -242,6 +290,9 @@ void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double pot
      double X= posicion[0];
      double Y=posicion[1];
      double Orientacion= posicion[2];
+
+     double strafe_lf_rb_odom=0;  
+     double strafe_rf_lb_odom=0; 
 
      DRIVE.kp=DrivePID[0];
      DRIVE.ki=DrivePID[1];
@@ -265,9 +316,14 @@ void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double pot
      TURN.zonaintegralactiva= Orientacion * .3;
      TURN.integralpowerlimit= 50/TURN.ki;
      
+ 
+     
+     DRIVE.maximo=180;  
+     TURN.maximo=150; 
+
      bool condicion_odometria=false;
      
-     tiempo*=1000;
+     tiempo_sec*=1000;
      int contador=0;
 
      while(condicion_odometria==false){
@@ -275,8 +331,9 @@ void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double pot
         // si se escogio facing to -> el robot apuntará a un punto
         // si se escogio move to -> el robot no apuntará a ningun punto, en cambio tendra una orientacion predefinida
         Orientacion=fuctPtr_Mode(Orientacion,TargetX,TargetY);
-        Orientacion+=offset;
+       
         TURN.zonaintegralactiva= Orientacion*.3;
+
 
         DRIVE.error= hypot(X-absGlobalX,Y-absGlobalY); 
         TURN.error= reducir_angulo_180_180(Orientacion- absOrientacionDeg);
@@ -314,26 +371,15 @@ void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double pot
 
         DRIVE.finalpower *= potencia;
         TURN.finalpower *= potencia;
+        
+        strafe_lf_rb_odom=cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4);  
+        strafe_rf_lb_odom=sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4); 
+        
 
-        Robot::LeftFront_1.move_velocity(DRIVE.finalpower*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))+TURN.finalpower) ;
-        Robot::LeftFront_2.move_velocity(DRIVE.finalpower*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))+TURN.finalpower);
 
-        Robot::LeftBack_1.move_velocity(DRIVE.finalpower*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) -  M_PI/4))+TURN.finalpower);
-        Robot::LeftBack_2.move_velocity(DRIVE.finalpower*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) -  M_PI/4))+TURN.finalpower);
-
-        Robot::RightFront_1.move_velocity(DRIVE.finalpower*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))-TURN.finalpower);
-        Robot::RightFront_2.move_velocity(DRIVE.finalpower*(sin(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))-TURN.finalpower);
-       
-        Robot::RightBack_1.move_velocity(DRIVE.finalpower*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))-TURN.finalpower);
-        Robot::RightBack_2.move_velocity(DRIVE.finalpower*(cos(absOrientacionRad + atan2(Y - absGlobalY, X - absGlobalX) - M_PI/4))-TURN.finalpower);
-
+        x_drive(DRIVE.finalpower, strafe_lf_rb_odom, strafe_rf_lb_odom, TURN.finalpower, "AUTO");
          
-        if((fabs(DRIVE.error)<.2  && fabs(TURN.error) <2 )|| contador>=tiempo){condicion_odometria=true;}
-
-        //std::cout<<"\n"<<contador; 
-        //std::cout<<"\t"<<absGlobalY;
-        //std::cout<<"\t24";
-      
+        if((fabs(DRIVE.error)<.2  && fabs(TURN.error) <2 )|| contador>=tiempo_sec){condicion_odometria=true;}
 
         pros::delay(10);
         contador+=10;
@@ -342,139 +388,15 @@ void Robot::Odom_Movement(double(*fuctPtr_Mode)(double,double,double),double pot
     Robot::brake("stop");    
     pros::delay(10);
 
-    /*
-    for(int i=0; i<10000; i++){
-        std::cout<<"\n"<<contador;
-        std::cout<<"\t"<<absGlobalY;
-        std::cout<<"\t24"; 
-        pros::delay(10);
-    }*/
 }
 
-
-void Robot::PID_chassis(float unidades,float Orientacion,float potencia ,float tiempo){
-
-     /*
-     Calculos necesarios para despues continuar con el ciclo de PID
-     Debido a que son dos compensadores, se realizan los calculos necesarios 
-     Para cada uno de ellos
-     */
-     
-    DRIVE.kp= 10; 
-    DRIVE.ki=.0001; 
-    DRIVE.kd=22.5; 
-    
-    TURN.kp= 1.5;
-    TURN.ki= .00150;
-    TURN.kd=1.7;
-
-    DRIVE.integral_raw=0;
-    DRIVE.last_error=0;
-
-    DRIVE.zonaintegralactiva= unidades *.3;
-    DRIVE.integralpowerlimit= 50/DRIVE.ki;
-
-    Orientacion= reducir_angulo_0_360(Orientacion);
-
-    TURN.integral_raw=0;
-    TURN.last_error=0;
-
-    TURN.zonaintegralactiva= Orientacion *.3;
-    TURN.integralpowerlimit= 50/TURN.ki;
-
-    bool condicion=false;
-     
-    tiempo*=1000;
-    int contador=0;
-
-    int Distancia = 0 ; 
-    Encoder_Derecho.reset();
-    pros::delay(100); 
-
-
-    while(condicion==false){ 
-        
-        Distancia = Encoder_Derecho.get_value()*(1.5627*2*M_PI)/360;  
-        DRIVE.error= unidades-Distancia; 
-       
-        DRIVE.proporcion= DRIVE.error * DRIVE.kp;
-
-        if(fabs(DRIVE.error)>DRIVE.zonaintegralactiva && DRIVE.error!=0){DRIVE.integral_raw=0;}
-
-        else{DRIVE.integral_raw+= DRIVE.error;}
-
-        DRIVE.integral_raw= DRIVE.integral_raw > DRIVE.integralpowerlimit ? DRIVE.integral_raw : DRIVE.integral_raw <-DRIVE.integralpowerlimit ? -DRIVE.integral_raw : DRIVE.integral_raw;
-
-        DRIVE.integral= DRIVE.ki*DRIVE.integral_raw;
-
-        DRIVE.derivada= DRIVE.kd * (DRIVE.error - DRIVE.last_error);
-        DRIVE.last_error= DRIVE.error;
-       
-        DRIVE.finalpower= (ceil(DRIVE.proporcion+DRIVE.integral+DRIVE.derivada));
-
-        DRIVE.finalpower= DRIVE.finalpower > 180 ? 180 : DRIVE.finalpower < -180 ? -180:DRIVE.finalpower;
-        
-        DRIVE.finalpower*=potencia;
-
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////
-        TURN.error= reducir_angulo_180_180(Orientacion- absOrientacionDeg);
-       
-        TURN.proporcion= TURN.error * TURN.kp;
-
-        if(fabs(TURN.error)>TURN.zonaintegralactiva && TURN.error!=0){TURN.integral_raw=0;}
-
-        else{TURN.integral_raw+= TURN.error;}
-
-        TURN.integral_raw= TURN.integral_raw > TURN.integralpowerlimit ? TURN.integral_raw : TURN.integral_raw <-TURN.integralpowerlimit ? -TURN.integral_raw : TURN.integral_raw;
-
-        TURN.integral= TURN.ki*TURN.integral_raw;
-
-        TURN.derivada= TURN.kd * (TURN.error - TURN.last_error);
-        TURN.last_error= TURN.error;
-       
-        TURN.finalpower= (ceil(TURN.proporcion+TURN.integral+TURN.derivada));
-
-        TURN.finalpower= TURN.finalpower > 150 ? 150 : TURN.finalpower < -150 ? -150:TURN.finalpower;
-
-
-        TURN.finalpower*=potencia; 
-
-    
-        Robot::LeftFront_1.move_velocity(DRIVE.finalpower + TURN.finalpower) ;
-        Robot::LeftFront_2.move_velocity(DRIVE.finalpower + TURN.finalpower);
-
-        Robot::LeftBack_1.move_velocity(DRIVE.finalpower + TURN.finalpower);
-        Robot::LeftBack_2.move_velocity(DRIVE.finalpower + TURN.finalpower);
-
-        Robot::RightFront_1.move_velocity(DRIVE.finalpower - TURN.finalpower);
-        Robot::RightFront_2.move_velocity(DRIVE.finalpower - TURN.finalpower);
-       
-        Robot::RightBack_1.move_velocity(DRIVE.finalpower - TURN.finalpower);
-        Robot::RightBack_2.move_velocity(DRIVE.finalpower - TURN.finalpower);
-     
-
-        if( (fabs(DRIVE.error)<.2  && fabs(TURN.error) <2 ) || contador>=tiempo){condicion=true;}
-        
-        //std::cout<<"\nDistancia: "<<Distancia;
-
-        pros::delay(10);
-        contador+=10;
-
-       
-    }
-
-    Robot::brake("stop");   
-    pros::delay(10);
-}
-  
-
-void Robot::Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacion,float potencia ,std::vector<double> TurnPID,double tiempo,float TargetX, float TargetY, float offset){
+void Robot::Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacion,float potencia ,std::vector<double> TurnPID,double tiempo_sec,float TargetX, float TargetY,float Turn_offset){
 
     TURN.kp=TurnPID[0];
     TURN.ki=TurnPID[1];
     TURN.kd=TurnPID[2];
 
-    Orientacion= reducir_angulo_0_360(Orientacion);
+    Orientacion= reducir_angulo_0_360(Orientacion)-Turn_offset;
 
     TURN.integral_raw=0;
     TURN.last_error=0;
@@ -482,17 +404,18 @@ void Robot::Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacio
     TURN.zonaintegralactiva= Orientacion *.3;
     TURN.integralpowerlimit= 50/TURN.ki;
 
+    TURN.maximo=150; 
+
     bool condicion=false;
      
-    tiempo*=1000;
+    tiempo_sec*=1000;
     int contador=0;
 
     std::cout<<"Zona integral "<<TURN.zonaintegralactiva;
 
     while(condicion==false){ 
 
-        Orientacion = fuctPtr_Mode(Orientacion , TargetX , TargetY); 
-        Orientacion += offset; 
+        Orientacion = fuctPtr_Mode(Orientacion , TargetX , TargetY) -Turn_offset ; 
               
         TURN.error= reducir_angulo_180_180(Orientacion- absOrientacionDeg);
        
@@ -512,8 +435,6 @@ void Robot::Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacio
         TURN.finalpower= (ceil(TURN.proporcion+TURN.integral+TURN.derivada));
 
         TURN.finalpower= TURN.finalpower > 150 ? 150 : TURN.finalpower < -150 ? -150:TURN.finalpower;
-        
-        TURN.finalpower*=potencia; 
     
         Robot::LeftFront_1.move_velocity(TURN.finalpower) ;
         Robot::LeftFront_2.move_velocity(TURN.finalpower);
@@ -528,99 +449,112 @@ void Robot::Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacio
         Robot::RightBack_2.move_velocity(-TURN.finalpower);
      
 
-        if( fabs(TURN.error) <2 || contador>=tiempo){condicion=true;}
+        if( fabs(TURN.error) <1 || contador>=tiempo_sec){condicion=true;}
 
 
         pros::delay(10);
         contador+=10;
 
-        std::cout<<"\n"<<contador<<"\t"<<absOrientacionDeg<<"\t"<<"180";
     }
     Robot::brake("stop");   
   
     pros::delay(10);
 }
 
-void Robot::tune_pid(float tiempo, float step_percent){
+
+void Robot::tune_pid(float tiempo_sec, float step_percent, pros::motor_gearset_e Gearset,std::vector<pros::Motor> Motores, std::string Entrada){
+
     step_percent /=100; 
-    step_percent= step_percent * 200; 
+
+    int RPM_motor = Gearset==pros::E_MOTOR_GEARSET_36 ? 100 : Gearset ==pros::E_MOTOR_GEARSET_18 ? 200 : Gearset ==pros::E_MOTOR_GEARSET_06 ?600 : 0;
+    
+    step_percent = Entrada.compare("VELOCIDAD") == 0 ? step_percent*RPM_motor : Entrada.compare("VOLTAJE") ==0 ? step_percent*12000 : 0; 
+ 
     int contador= 0; 
-    tiempo *=1000; 
-    float vel_chassis=0;
+    tiempo_sec *=1000; 
+
+    int Salida=0;
+    int Salida_promedio=0;
+    
     std::cout<<"\nStep: "<<step_percent; 
-    while(contador <tiempo){
-        LeftFront_1.move_velocity(step_percent); RightFront_1.move_velocity(step_percent);  
-        LeftFront_2.move_velocity(step_percent); RightFront_2.move_velocity(step_percent);
 
-        LeftBack_1.move_velocity(step_percent); RightBack_1.move_velocity(step_percent);
-        LeftBack_2.move_velocity(step_percent); RightBack_2.move_velocity(step_percent); 
+    bool inicio=true; 
+    while(contador <tiempo_sec){
+           
+       if(inicio){
+        for(int i=0; i<=Motores.size()-1; i++){
+            if(Entrada.compare("VELOCIDAD")==0){Motores[i].move_velocity(step_percent);}
 
-        vel_chassis = (LeftFront_1.get_actual_velocity() + LeftFront_2.get_actual_velocity() + 
-        RightFront_1.get_actual_velocity() + RightFront_2.get_target_velocity() + LeftBack_1.get_actual_velocity() + 
-        LeftBack_2.get_actual_velocity() + RightBack_1.get_actual_velocity() + RightBack_2.get_actual_velocity() )/8;
+            if (Entrada.compare("VOLTAJE")==0){Motores[i].move_voltage(step_percent);}
+    
+            pros::delay(10);
+        
+        inicio=false;
+       }
+       }
 
-        std::cout<<"\nTiempo: \t"<<contador; 
-        std::cout<<"\tVel: \t"<< vel_chassis; 
+       for(int i=0; i<=Motores.size()-1; i++){
+        Salida = Entrada.compare("VELOCIDAD")==0 ? Salida= Motores[i].get_actual_velocity() : Entrada.compare("VOLTAJE")==0 ? Salida= Motores[i].get_voltage() : 0;
+       }
+
+       Salida_promedio = Salida;
+    
+       std::cout<<"\nTiempo: \t"<<contador; 
+       std::cout<<"\tSalida: \t"<< Salida_promedio; 
         
         pros::delay(10); 
-        contador+=10; 
+        contador+=10;
+    
     }
 } 
 
-void Robot::python_movement(double(*fuctPtr_mode)(double,double,double),double potencia,std::vector<double> X, std::vector<double> Y, float tiempo){
+
+void Robot::follow_path(double(*fuctPtr_mode)(double,double,double),double potencia,std::vector<double> X, std::vector<double> Y, float tiempo_sec){
     //Ciclo for que navega a traves del vector X
-    for(auto i=0; i<X.size(); i++){
+    for(auto i=0; i<=X.size(); i++){
         //Mientras lo navega correra la función de Odom_Movement
-        Odom_Movement(fuctPtr_mode, potencia,{X[i],Y[i],0}, Drive_Constant, Turn_Constant, tiempo, 0,0,0);
+        Odom_Movement(fuctPtr_mode, potencia,{X[i],Y[i],0}, Drive_Constant, Turn_Constant, tiempo_sec, 0,0);
     }
 }
 
-void Robot:: Flywheel_pid_shoot (double RPM,std::vector<double>FlywheelPID,float potencia , int n_disparos,float delay){
-    Rotacion.reset(); 
-    //Puedes quitar las impresiones o utilizralas para ver como está el pedo
 
-    FLYWHEEL.kp = FlywheelPID[0];
-    FLYWHEEL.ki = FlywheelPID[1];
-    FLYWHEEL.kd=  FlywheelPID[2]; 
+void Robot:: Flywheel_PID (void*ptr){
+
+    FLYWHEEL.kp = Flywheel_Constant[0];
+    FLYWHEEL.ki = Flywheel_Constant[1];
+    FLYWHEEL.kd=  Flywheel_Constant[2]; 
 
     FLYWHEEL.integral_raw=0;
     FLYWHEEL.last_error=0;
 
-    FLYWHEEL.zonaintegralactiva = RPM* .45;
+    FLYWHEEL.zonaintegralactiva = Robot::RPM* .45;
     FLYWHEEL.integralpowerlimit = 50/FLYWHEEL.ki; 
-    
-    bool paro = false; 
 
     int contador=0; 
     
-    float velocidad=0;
-    Fil::kalman.filter(0);  
+    float velocidad=clean_readings(Fil::kalman);
 
-    for(int i= 0 ; i<50 ; i++){
-        velocidad= Fil::kalman.filter(0); 
-        pros::delay(10); 
-    }
-
-    int disparo=0; 
-
-    bool estabilizooo=false;
+    FLYWHEEL.maximo=12000; 
     
-    //El numero de disparos máximos son 3. 
-    n_disparos= n_disparos>3 ?3 : n_disparos; 
+    float feed_forward =0; 
+    float kv= 2.18;
+    int Ks= 3000; 
 
-   //std::cout<<"\nZona Integral: "<<FLYWHEEL.zonaintegralactiva;
-
+    float V=  Ks*sign(velocidad)+ kv* velocidad ;
+    
     pros::delay(10);
     
-    while(paro==false){
-          
-        //Filtrado de la velocidad en RPM  esta esta manera de hacerlo o está otra
-        velocidad = Fil::kalman.filter(Rotacion.get_velocity()/6)  ;
-        //velocidad= Fil::kalman.filter(((Rotacion.get_velocity()/100)/.01)/6) pero según yo da lo mismo 
-        
-        //calculo del error
-        FLYWHEEL.error = RPM - velocidad;
+    
+    while(1){
+    
+        FLYWHEEL.zonaintegralactiva = RPM* .45;
 
+        velocidad = Fil::kalman.filter(Rotacion.get_velocity()/6)  ;
+
+        //calculo del error
+        
+        FLYWHEEL.error = RPM - velocidad;
+ 
         FLYWHEEL.proporcion = FLYWHEEL.kp * FLYWHEEL.error;
 
         if (fabs (FLYWHEEL.error) > FLYWHEEL.zonaintegralactiva && FLYWHEEL.error !=0){FLYWHEEL.integral_raw=0;}
@@ -635,42 +569,40 @@ void Robot:: Flywheel_pid_shoot (double RPM,std::vector<double>FlywheelPID,float
         
         //Manera de clampear el finalpower. 
         FLYWHEEL.finalpower += ceil (FLYWHEEL.proporcion + FLYWHEEL.integral + FLYWHEEL.derivada);
-        FLYWHEEL.finalpower+=potencia; 
-
-        Robot::FlyWheel_1.move_voltage(FLYWHEEL.finalpower);
-        Robot::Flywheel_2.move_voltage(FLYWHEEL.finalpower);
         
-        //Este es el sistema de disparo,
-        //Cuenta con una tolerancia de 200 RPM, se puede modificar
-        //Tolerancia de de hasta 200 RPM. 
-        if(fabs(FLYWHEEL.error)<200 ){
-            estabilizooo=true;  //Está es una variable para indicarnos cuando se estabiliza, no tiene una función en el código
-                                //Pero para imprimir en la terminar es muy util, ya que te indica con un 0 o un 1, cuando el flywheel
-                                //Esté estable
+       
+        V=  Ks*sign(velocidad)+ kv* velocidad ;
 
-            Indexer.tare_position(); //Siempre se debe de reiniciar el encoder del indexer 
-            Indexer.move_absolute(180,50); //Esta es la posicion y velocidad necesaria para realizar un disparo
-            
-            //Se pone un delay para darle tiempo al brian de darse cuenta que se desestabilizo el flywheel
-            //Puedes probar disminuyendo hasta cual es lo minimo necesario
-            pros::delay(500+delay);  
-                                             
-            disparo++; //Con este incrementamos una variable para saber cuantos disparamos llevamos
+        FLYWHEEL.finalpower = ceil (FLYWHEEL.proporcion + FLYWHEEL.integral + FLYWHEEL.derivada+V);
+        FLYWHEEL.finalpower = FLYWHEEL.finalpower > FLYWHEEL.maximo ? FLYWHEEL.maximo: FLYWHEEL.finalpower;
+    
+  
+        Robot::move_Flywheel(FLYWHEEL.finalpower);
+
+        if (!(abs(FLYWHEEL.error)   <50)) {
+            Ready_to_shoot=false;
         }
 
-        else{
-            estabilizooo=false;
-        } 
+        else {
+            Ready_to_shoot=true; 
+        }
         
-        //Condicion para parar el flywheel, si se realizarón el numero de disparos deseados.
-        paro = disparo==n_disparos ? true : false; 
+        if(RPM==0){
+            Robot::move_Flywheel(0);
+        }
+        
+        std::cout<<"\n Tiempo: \t"<<contador; 
+        std::cout<<"\t Target: \t"<<RPM; 
+        std::cout<<"\t Current: \t"<<velocidad; 
+        std::cout<<"\t Error: "<<FLYWHEEL.error;
+        std::cout<<"\t FeedForward: "<<V;    
+        std::cout<<"\tP: "<<FLYWHEEL.proporcion; 
+        std::cout<<"\tI: "<<FLYWHEEL.integral;  
+        std::cout<<"\tD: "<<FLYWHEEL.derivada;
+        std::cout<<"\tPower: "<<FLYWHEEL.finalpower;
+           
 
-        //std::cout<<"\n"<<contador;
-        //std::cout<<"\t"<<velocidad;
-        //std::cout<<"\t"<<RPM;
-        //std::cout<<"\t"<<estabilizooo;  
-        //std::cout<<"\t"<<disparo;
-        
+         
         pros::delay(10);
         contador+=10;   
     } 
@@ -680,169 +612,183 @@ void Robot:: Flywheel_pid_shoot (double RPM,std::vector<double>FlywheelPID,float
 
 }
 
-void Robot::Flywheel_pid(void*ptr){
-     Rotacion.reset(); 
-    //Puedes quitar las impresiones o utilizralas para ver como está el pedo
-   
+void Robot::Shoot_PID(int disparos,std::string mode,int delay_msec){
+  int RPM_SHOOT = mode.compare("LONG")==0 ? LOW_VELOCITY_SHOOT : mode.compare("MEDIUM")==0 ? MEDIUM_VELOCITY_SHOOT : mode.compare("SHORT") ==0 ? HIGH_VELOCITY_SHOOT : 0;  
+  int n_disparo=0;
+  bool paro=false;
 
-    FLYWHEEL.kp =.01535 ;
-    FLYWHEEL.ki =.00000525 ;
-    FLYWHEEL.kd=4.05 ; 
+  while (paro==false) {
 
-    FLYWHEEL.integral_raw=0;
-    FLYWHEEL.last_error=0;
+    if(Ready_to_shoot==true){
+        Indexer.tare_position(); 
+        Move_Indexer_pos(INDEXER_SHOOT_POSITION, RPM_SHOOT);
+        n_disparo++; 
+        pros::delay(500+delay_msec);  
+    }
 
-    FLYWHEEL.zonaintegralactiva = 2500* .45;
-    FLYWHEEL.integralpowerlimit = 50/FLYWHEEL.ki; 
-    
-    bool paro = false; 
+    paro = n_disparo>= disparos ? true : false; 
 
-    int contador=0; 
-    
-    float velocidad=0;
+  } 
 
 
-    std::cout<<"\nZona Integral: "<<FLYWHEEL.zonaintegralactiva;
 
-    pros::delay(10);
-    
-    while(paro==false){
-        
-        //Filtrado de la velocidad en RPM  esta esta manera de hacerlo o está otra
-        velocidad = Fil::kalman.filter(Rotacion.get_velocity()/6)  ;
-        //velocidad= Fil::kalman.filter(((Rotacion.get_velocity()/100)/.01)/6) pero según yo da lo mismo 
-        
-        //calculo del error
-        FLYWHEEL.error = 2500 - velocidad;
-
-        FLYWHEEL.proporcion = FLYWHEEL.kp * FLYWHEEL.error;
-
-        if (fabs (FLYWHEEL.error) > FLYWHEEL.zonaintegralactiva && FLYWHEEL.error !=0){FLYWHEEL.integral_raw=0;}
-
-        else{FLYWHEEL.integral_raw += FLYWHEEL.error;}
-
-        FLYWHEEL.integral_raw = FLYWHEEL.integral_raw > FLYWHEEL.integralpowerlimit ? FLYWHEEL.integralpowerlimit : FLYWHEEL.integral_raw < -FLYWHEEL.integralpowerlimit ? -FLYWHEEL.integralpowerlimit : FLYWHEEL.integral_raw;
-        FLYWHEEL.integral = FLYWHEEL.ki * FLYWHEEL.integral_raw; 
-
-        FLYWHEEL.derivada = FLYWHEEL.kd*(FLYWHEEL.error - FLYWHEEL.last_error);
-        FLYWHEEL.last_error = FLYWHEEL.error; 
-        
-        //Manera de clampear el finalpower. 
-        FLYWHEEL.finalpower += ceil (FLYWHEEL.proporcion + FLYWHEEL.integral + FLYWHEEL.derivada);
-
-        Robot::FlyWheel_1.move_voltage(FLYWHEEL.finalpower);
-        Robot::Flywheel_2.move_voltage(FLYWHEEL.finalpower);
-        
-        if(fabs(FLYWHEEL.error)<50){
-            paro=true; 
-        }
-        
-        pros::delay(10);
-        contador+=10;   
-    } 
-    
 }
 
-
-
-void Robot::eat (int voltage){
-    intaker_1.move_voltage(voltage);  
-    intaker_2.move_voltage(voltage); 
+void Robot::Shoot_normal(int disparos, int velocity_RPM){
+    int n_disparo=0; 
+    while (n_disparo<disparos) {
+        set_Indexer(true, velocity_RPM, "AUTO"); 
+        n_disparo++; 
+    }
 } 
 
-void Robot::Move_Roller(float distancia, int vel){
+void Robot::eat (int RPM){
+    intaker_1.move_velocity(RPM);  
+    intaker_2.move_velocity(RPM); 
+} 
+
+void Robot::Move_Roller_pos(float Position, int RPM){
     intaker_1.tare_position();
     intaker_2.tare_position();
 
-    intaker_1.move_absolute(distancia, vel);
-    intaker_2.move_absolute(distancia, vel);
+    intaker_1.move_absolute(Position, RPM);
+    intaker_2.move_absolute(Position, RPM);
 } 
+
+void Robot::Move_Indexer_pos(float Position, int RPM){
+    Indexer.move_absolute(Position, RPM);
+}
+
+
+void Robot::Turn_lights(int mode){
+    mode = mode>MAX_LIGHT_CONFIGURATION ? MAX_LIGHT_CONFIGURATION :mode; 
+    
+    switch (mode) {
+    case HIGH_DISTANCE_LIGHT: Lights(255, 0 ); break;
+    case MEDIUM_DISTANCE_LIGHT: Lights(0, 255); break;
+    case LOW_DISTANCE_LIGHT:  Lights(255, 255); break;
+    default: Lights(0, 0); break; 
+    }
+
+}
+
+
+void Robot::Lights(int _red, int _blue){
+    Red_led.set_value(_red/2); 
+    Blue_led.set_value(_blue/2); 
+}
+
+
+void Robot::Release_expansion(bool state){
+    
+    state = state!=KEEP_EXPANSION ? THROW_EXPANSION : KEEP_EXPANSION ;
+
+    int Position = state==THROW_EXPANSION ? EXPANSION_POSITION : 0; 
+    
+    //Detener el flywheel en caso de que se active la expansion para evitar
+    //Que el hilo pueda atorarse. 
+    RPM = state!= KEEP_EXPANSION ? 0 : RPM;
+    
+    expansion.move_absolute(Position, 100);    
+}  
 
 void Robot::drive(void*ptr){
 
-    int power_flywheel=0; //Poder del flywheel inicia en cero
-    int power_indexer=0; //Estado de indexer inicia en false
-    int power_intake=0; //Poder del intake inicia en cero
+    int power_flywheel=0;
+    int power_indexer=0;
+    int power_intake=0; 
+
+    int indexer_velocity=0;
+
+    int shoot_configuration=0; 
+    int light_configuration = shoot_configuration; 
 
     bool state_flywheel=false; 
+    bool state_indexer=false;
     
+    float potencia_giro=1; 
+
+    bool expansiooon=KEEP_EXPANSION; 
+
 
     while(true){
-        /////Calculos necesarios para el movimiento del chassis///
         
-        //ANALOG_LEFT_Y
-
-        //Analog_right_x
-
-        //analog_left_x
-        int y= master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y); //Joystick izquierdo (Arriba,Abajo)
-        int turn=master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X); //Joystick Derercho (Derecha, Izquierda)
-        int x=master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X); //Joystick izquierdo (Derecha, Izquierda)
+        int y= master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_Y); 
+        int turn=master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X) * potencia_giro; 
+        int x=master.get_analog(pros::E_CONTROLLER_ANALOG_LEFT_X); 
 
         double theta=atan2(y,x);
         double power=hypot(x,y);
-
-        //Variable para conocer la orientacion actual en radianes (La otra variable se deja utilizar por el multitask)//        
-        double inercia_rad = TO_RAD(gyro.get_heading()); 
-
-        /*Angulo correspondiente a las llantas
-        LeftFront y RightBack
-        */                                         
-        double strafe_lf_rb=cos(theta - M_PI/4 + inercia_rad);
-
-        /*Angulo correspondiente a las llantas
-        LeftBack y RighFront
-        */ 
-        double strafe_rf_lb=sin(theta - M_PI/4 + inercia_rad);
+     
+        //double inercia_rad = TO_RAD(gyro.get_heading()); 
+                                         
+        double strafe_lf_rb=cos(theta - M_PI/4 + absOrientacionRad);
+        double strafe_rf_lb=sin(theta - M_PI/4 + absOrientacionRad);
         
-        //Funcion para manerar X-Drive
-        x_drive(power,strafe_lf_rb,strafe_rf_lb,turn);
+        x_drive(power,strafe_lf_rb,strafe_rf_lb,turn+turn_drift,"JOYSTICK");
 
-        /////////////////////////////Flywheel/////////////////////////////////////////////////////////////////////////////////////////// 
-        state_flywheel = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R1)  ? !state_flywheel : state_flywheel; 
-
-        power_flywheel= state_flywheel==true ? 12000 :  state_flywheel==false ? 0 : power_flywheel ;
-       
-        move_Flywheel(power_flywheel);
-
-        //////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        shoot_configuration = master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_R1)==1 ? shoot_configuration+=1: shoot_configuration>3 ? 0 : shoot_configuration;
         
-        /////////////////////////////////////Intake/////////////////////////////////////////////////////////////////////////////////////////////
-        power_intake=master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)==1 ? 12000 : master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)==1 ? -12000: 0;
+        light_configuration=shoot_configuration; 
+        Turn_lights(light_configuration);
+
+        RPM = shoot_configuration==1 ? LONG_FLYWHEEL_VELOCITY : shoot_configuration==2 ? MEDIUM_FLYWHEEL_VELOCITY : shoot_configuration == 3 ? SHORT_FLYWHEEL_VELOCITY: RPM;
+         
+        
+        potencia_giro= RPM !=STOP_FLYWHEEL_VELOCITY ? .75 :1;     
+
+        indexer_velocity = shoot_configuration==1 ? LOW_VELOCITY_SHOOT : shoot_configuration==2 ? MEDIUM_VELOCITY_SHOOT :HIGH_VELOCITY_SHOOT;
+
+        state_indexer = master.get_digital(pros::E_CONTROLLER_DIGITAL_R2)==1 ? true :false;
+        set_Indexer(state_indexer, indexer_velocity,"DRIVE");    
+        
+        expansiooon= master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_A)==1 ? THROW_EXPANSION : expansiooon; 
+        Release_expansion(expansiooon); 
+        
+        power_intake=
+        master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)==1 && master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)==1 ? DRIVER_ROLLER_VELOCITY:
+        master.get_digital(pros::E_CONTROLLER_DIGITAL_L1)==1 ? DRIVER_INTAKER_VELOCITY : master.get_digital(pros::E_CONTROLLER_DIGITAL_L2)==1 ? -DRIVER_INTAKER_VELOCITY:0;
+        
         move_Intake(power_intake);
-        ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        
-        /////////////////////////////////////////////////////////Indexer////////////////////////////////////////////////////////////////////////////////////////////////////
-        power_indexer = master.get_digital(pros::E_CONTROLLER_DIGITAL_A)==1 ? 6000 : master.get_digital(pros::E_CONTROLLER_DIGITAL_B)==1 ? -6000 : 0; 
-        move_Indexer(power_indexer); 
-        /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
+      
         pros::delay(10);  
     }
 }
 
-void Robot::x_drive(double power, double strafe_lf_rb,double strafe_rf_lb,double turn){
+void Robot::x_drive(double power, double strafe_lf_rb,double strafe_rf_lb,double turn, std::string name){
     //Limitador de velocidad
     double max=std::max(abs(strafe_lf_rb),abs(strafe_rf_lb));
 
     ////////////Calculo de poder para cada una de las llantas///////////
     
-    double power_left_front= power*(strafe_lf_rb/max)+(turn+turn_joytick);
-    double power_left_back= power*(strafe_rf_lb/max)+(turn+turn_joytick);
+    double power_left_front= power*(strafe_lf_rb/max)+(turn);
+    double power_left_back= power*(strafe_rf_lb/max)+(turn);
 
-    double power_righ_front= power*(strafe_rf_lb/max)-(turn+turn_joytick);
-    double power_righ_back= power*(strafe_lf_rb/max)-(turn+turn_joytick);
+    double power_righ_front= power*(strafe_rf_lb/max)-(turn);
+    double power_righ_back= power*(strafe_lf_rb/max)-(turn);
 
     //Turn_joystick es la salida de PID_Drift, como este compensador
     //Actua en el modo driver, su valor tiene que estar incluido aqui
     ///////////////////////////////////////////////////////////////////
     
+    if(name.compare("JOYSTICK")==0){
     //Finalmente movemos los motores
     LeftFront_1.move(power_left_front);    RightFront_1.move(power_righ_front);
 	LeftFront_2.move(power_left_front);    RightFront_2.move(power_righ_front);
 
 	LeftBack_1.move(power_left_back);	     RightBack_1.move(power_righ_back);
 	LeftBack_2.move(power_left_back);      RightBack_2.move(power_righ_back);
+    }
+
+    else if(name.compare("AUTO")==0){
+    LeftFront_1.move_velocity(power_left_front);    RightFront_1.move_velocity(power_righ_front);
+	LeftFront_2.move_velocity(power_left_front);    RightFront_2.move_velocity(power_righ_front);
+
+	LeftBack_1.move_velocity(power_left_back);	  RightBack_1.move_velocity(power_righ_back);
+	LeftBack_2.move_velocity(power_left_back);      RightBack_2.move_velocity(power_righ_back);
+    }
+
+    else {LeftFront_1 = LeftFront_2 = LeftBack_1 = LeftBack_2 = RightFront_1 = RightFront_2 = RightBack_1 = RightBack_2 = 0;}
 }
 
 void Robot::move_Flywheel(int power){
@@ -855,101 +801,249 @@ void Robot::move_Intake(int power){
     intaker_2.move_voltage(power);
 }
 
-void Robot::move_Indexer(int power){
-    Indexer.move_voltage(power); 
+void Robot::move_Indexer_velocity(int RPM){
+    Indexer.move_velocity(RPM); 
 } 
 
-void Robot::PID_drift(void *ptr){
+void Robot::set_Indexer(bool state, int RPM,std::string mode){
+
+    if(state == false){Indexer.move_absolute(0, 50);}
+    
+    else{
+        if(Indexer.get_position() >175 && Indexer.get_position() <185){
+            Indexer.tare_position();
+            pros::delay(10); 
+        }
+        
+        if(mode.compare("AUTO")==0){ Move_Indexer_pos(INDEXER_SHOOT_POSITION, RPM);}
+
+        if(mode.compare("DRIVE")==0){move_Indexer_velocity(RPM);}
+    
+    }
+    
+}
+
+void Robot::PID_drift_Cesar(void *ptr){
   
     int target=0;
 
     TURN.integral_raw=0;
     TURN.last_error=0; 
-    
-    TURN.kp = 2;
+
+    TURN.kp = Turn_Constant[0];
     TURN.ki = Turn_Constant[1];
     TURN.kd = Turn_Constant[2];
     
-    bool state_up =false;
-    bool verificacion=false;
-
+    bool start_pid =false;
+    
     //Vector donde vienen las diferentes posiciones a girar
-    std::vector<int> Positions {0,90,180,270,360};
+    std::vector<float> Positions {0,90,180,270,360};
     //Vecotr donde se almacenar las distancias entre la orientacion actual y la target
-    std::vector<int> distance {0,0,0,0};
+    std::vector<float> Distance {0,0,0,0,0};
     
     //Variables necesarias para encontrar el elemento minimo dentro del vector de distancia
-    int min=distance[0];
+    float min=Distance[0];
     int index_min=0;
-    
-    turn_joytick=0;
+    turn_drift=0;
 
     while(1){
-    //Ciclo sin fin, Dentro de este ciclo existen otros dos ciclos, que nos sirven
-    //Para poder seleccionar el target y otro nos ayuda a ejecutar el PID 
-        while(verificacion==false){
-            //Inicializamos el power de PID
-            turn_joytick=0;
-    
-            //Inicializamos las variables para encontrar el minimo
-            min=distance[0];
-            index_min=0;
-
-            //Condicional para seleccionar el target que nosotros buscamos 
-            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)){
-                //Ciclo for, para recorrer cada elemento dentro del vector de posision
-                for (auto i = 0; i<Positions.size(); i++) {
-                    distance[i] = abs(Positions[i] - absOrientacionDeg); //Calcula la distancia entre la orientacion actual y las posiciones target
-                }
-                
-                //Ciclo for, para recorrer cada elemento dentro del vector de distancias 
-                for (auto i = 1; i < distance.size(); i++) {
-                    //Para encontrar el valor mas pequeño dentro de un vector, necesitamos suponer que el primer elemento es el menor
-                    //si la distancia actual es menor que la menor
-                    if (distance[i] < min) {
-                        min = distance[i]; //menor toma el valor de la distancia
-                        index_min = i;    //Se almacena el index de la distancia mas pequeña
-                    }
-                }
-
-                //Una vez calculado el index, se actualiza la informacion e indicamos que se ha presionado el boton 
-                state_up=true;
-            }
+        turn_drift=0; 
         
-                //Escogemos el target a movernos dependiendo del valor del index.
-                target = index_min == 0 ? 0 : index_min == 1 ? 90 : index_min == 2 ? 180 : index_min == 3 ? 270 : index_min ==4 ? 0 : target;
-
-                std::cout<<"\nverificacion: "<<verificacion;
-
-                std::cout<<"\tTarget: "<<target;
+        if (start_pid==false) {
+            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) ){
+                Distance = Get_Distances(Positions, absOrientacionDeg); 
+                index_min = Get_Index_min(Distance);
+                target = index_min == 0 ? 0 : index_min == 1 ? 90 : index_min == 2 ? 180 : index_min == 3 ? 270 : index_min ==4 ? 360: target;
                 
-                //Si el boton fue presionado, verificacion cambia de estado y se cierra el ciclo, entrando al siguiente
-                
-                verificacion = state_up ==true ? true : verificacion;
+                pros::delay(10); 
+                start_pid=true;
+            }
+        }
+   
+        if(start_pid==true){
 
-                pros::delay(10);
+            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) ){
+            Distance = Get_Distances(Positions, absOrientacionDeg); 
+            index_min = Get_Index_min(Distance);
+         
+            target = index_min == 0 ? 0 : index_min == 1 ? 90 : index_min == 2 ? 180 : index_min == 3 ? 270 : target;
+            
+            }
+
+            //std::cout<<"\n start ?: "<<start_pid;
+            //std::cout<<"\t target: "<<target; 
+            target = reducir_angulo_180_180(target);
+            
+            TURN.zonaintegralactiva= target * .3;
+            TURN.integralpowerlimit= 50/TURN.ki;
+                
+            TURN.error= reducir_angulo_180_180(target- absOrientacionDeg);
+
+            TURN.proporcion= TURN.error * TURN.kp;
+
+            if(fabs(TURN.error)>TURN.zonaintegralactiva && TURN.error!=0){TURN.integral_raw=0;}
+
+            else{TURN.integral_raw+= TURN.error;}
+
+            TURN.integral_raw= TURN.integral_raw > TURN.integralpowerlimit ? TURN.integral_raw : TURN.integral_raw <-TURN.integralpowerlimit ? -TURN.integral_raw : TURN.integral_raw;
+
+            TURN.integral= TURN.ki*TURN.integral_raw;
+
+            TURN.derivada= TURN.kd * (TURN.error - TURN.last_error);
+            TURN.last_error= TURN.error;
+            
+            TURN.finalpower= (ceil(TURN.proporcion+TURN.integral+TURN.derivada));
+
+            TURN.finalpower= TURN.finalpower > 100 ? 100 : TURN.finalpower < -100 ? -100:TURN.finalpower;  
+    
+            if(abs(master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) > 50){
+                start_pid=false;
+                turn_drift=0;
+                TURN.finalpower=0;
+            }
+
+            if(abs(TURN.error)<=2){TURN.finalpower=0;}
+
+            turn_drift=TURN.finalpower;
+
+            pros::delay(10);
+
+
+        }
+    }
+
+}
+
+void Robot::PID_drift_Alex_double(void*ptr){
+     int target=0;
+
+    TURN.integral_raw=0;
+    TURN.last_error=0; 
+
+    TURN.kp = Turn_Constant[0];
+    TURN.ki = Turn_Constant[1];
+    TURN.kd = Turn_Constant[2];
+    
+    bool start_pid =false;
+    
+    //Vector donde vienen las diferentes posiciones a girar
+    std::vector<float> Positions {0,90,180,270,360};
+    //Vecotr donde se almacenar las distancias entre la orientacion actual y la target
+    std::vector<float> Distance {0,0,0,0,0};
+    
+    //Variables necesarias para encontrar el elemento minimo dentro del vector de distancia
+    float min=Distance[0];
+    int index_min=0;
+    turn_drift=0;
+
+    while(1){
+        turn_drift=0; 
+        
+    
+        if (start_pid==false) {
+            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN)){
+                Distance = Get_Distances(Positions, absOrientacionDeg); 
+                index_min = Get_Index_min(Distance);
+                target = index_min == 0 ? 0 : index_min == 1 ? 90 : index_min == 2 ? 180 : index_min == 3 ? 270 : index_min==4 ? 360: target;
+                
+                pros::delay(10); 
+                start_pid=true;
+            }
+
+            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP)){
+                
+                target= 315+180;
+                pros::delay(10); 
+                start_pid=true;
+            }
+        }
+   
+        if(start_pid==true){
+
+            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN) ){
+            Distance = Get_Distances(Positions, absOrientacionDeg); 
+            index_min = Get_Index_min(Distance);
+         
+            target = index_min == 0 ? 0 : index_min == 1 ? 90 : index_min == 2 ? 180 : index_min == 3 ? 270 : target;
+            }
+
+            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP)){
+                target= 315+180;
+            }
+
+            
+            target = reducir_angulo_180_180(target);
+            
+            TURN.zonaintegralactiva= target * .3;
+            TURN.integralpowerlimit= 50/TURN.ki;
+                
+            TURN.error= reducir_angulo_180_180(target- absOrientacionDeg);
+
+            TURN.proporcion= TURN.error * TURN.kp;
+
+            if(fabs(TURN.error)>TURN.zonaintegralactiva && TURN.error!=0){TURN.integral_raw=0;}
+
+            else{TURN.integral_raw+= TURN.error;}
+
+            TURN.integral_raw= TURN.integral_raw > TURN.integralpowerlimit ? TURN.integral_raw : TURN.integral_raw <-TURN.integralpowerlimit ? -TURN.integral_raw : TURN.integral_raw;
+
+            TURN.integral= TURN.ki*TURN.integral_raw;
+
+            TURN.derivada= TURN.kd * (TURN.error - TURN.last_error);
+            TURN.last_error= TURN.error;
+            
+            TURN.finalpower= (ceil(TURN.proporcion+TURN.integral+TURN.derivada));
+
+            TURN.finalpower= TURN.finalpower > 100 ? 100 : TURN.finalpower < -100 ? -100:TURN.finalpower;  
+    
+            if(abs(master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) > 50){
+                start_pid=false;
+                turn_drift=0;
+                TURN.finalpower=0;
+            }
+
+            if(abs(TURN.error)<=2){TURN.finalpower=0;}
+
+            turn_drift=TURN.finalpower;
+
+            pros::delay(10);
+
+
+        }
+    }
+}
+
+void Robot::PID_drift_Alex_four(void *ptr){
+    int target=0;
+
+    TURN.integral_raw=0;
+    TURN.last_error=0; 
+
+    TURN.kp = Turn_Constant[0];
+    TURN.ki = Turn_Constant[1];
+    TURN.kd = Turn_Constant[2];
+    
+    bool start_pid =false;
+   
+
+    while(1){
+        turn_drift=0; 
+    
+        if(start_pid==false){
+
+            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) ==1 || master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT) ==1 ||
+            master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN) ==1 || master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT) ==1  ){
+            pros::delay(10); 
+            start_pid=true; 
+            }
         }
 
-        while(verificacion==true){
-            if(master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_X)){
-                min=distance[0];
-                index_min=0;
 
-                for (auto i = 0; i<Positions.size(); i++) {
-                    distance[i] = abs(Positions[i] - absOrientacionDeg);
-                }
-
-                for (auto i = 1; i < distance.size(); i++) {
-                    if (distance[i] < min) {
-                        min = distance[i];
-                        index_min = i;
-                    }
-                }
-            }
-
-            target = index_min == 0 ? 0 : index_min == 1 ? 90 : index_min == 2 ? 180 : index_min == 3 ? 270 : index_min ==4 ? 0 : target;
-
-            //Inician operaciones de PID
+        if(start_pid==true){
+            //std::cout<<"\n start ?: "<<start_pid;
+            //std::cout<<"\t target: "<<target; 
+            target = master.get_digital(pros::E_CONTROLLER_DIGITAL_UP)==1 && master.get_digital(pros::E_CONTROLLER_DIGITAL_LEFT)==1 ? 315+180 :master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_UP) ==1 ? 0 : master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_RIGHT) ==1 ? 90:
+            master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_DOWN) ==1 ? 180 : master.get_digital_new_press(pros::E_CONTROLLER_DIGITAL_LEFT) ==1 ? 270 : target; 
 
             target = reducir_angulo_180_180(target);
             
@@ -973,35 +1067,29 @@ void Robot::PID_drift(void *ptr){
             
             TURN.finalpower= (ceil(TURN.proporcion+TURN.integral+TURN.derivada));
 
-            TURN.finalpower= TURN.finalpower > 100 ? 100 : TURN.finalpower < -100 ? -100:TURN.finalpower;    
-        
-            //Si el joystick correspondiente a los giros tiene un valor mayor a 50, significa que el driver quiere
-            //Cambiar de orientacion, por lo tanto la orientacion se desbloquea y deja de accionarse el control PID
+            TURN.finalpower= TURN.finalpower > 100 ? 100 : TURN.finalpower < -100 ? -100:TURN.finalpower;  
+    
             if(abs(master.get_analog(pros::E_CONTROLLER_ANALOG_RIGHT_X)) > 50){
-                state_up=false;
-                verificacion=false;
-                turn_joytick=0;
+                start_pid=false;
+                turn_drift=0;
                 TURN.finalpower=0;
+ 
             }
 
             if(abs(TURN.error)<=2){TURN.finalpower=0;}
 
-            std::cout<<"\nverificacion: "<<verificacion;
+            turn_drift=TURN.finalpower;
 
-            std::cout<<"\tTarget: "<<target;
-            
-            std::cout<<"\tPower: "<<TURN.finalpower;
-
-            turn_joytick=TURN.finalpower;
-
-            std::cout<<"\tPower joytick: "<<turn_joytick;
             pros::delay(10);
+
         }
-    }         
+    }
+
 }
- 
+
+
 void Robot::brake(std::string mode){
-    if (mode.compare("coast") == 0){
+    if (mode.compare("COAST") == 0){
         LeftFront_1.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
         LeftFront_2.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 
@@ -1015,7 +1103,7 @@ void Robot::brake(std::string mode){
         RightBack_2.set_brake_mode(pros::E_MOTOR_BRAKE_COAST);
 	}
 
-    else if (mode.compare("hold")==0) {
+    else if (mode.compare("HOLD")==0) {
         LeftFront_1.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
         LeftFront_2.set_brake_mode(pros::E_MOTOR_BRAKE_HOLD);
 
@@ -1036,8 +1124,13 @@ void Robot::brake(std::string mode){
 void Robot::reset_sensors(){
     gyro.reset();
     Encoder_Derecho.reset();
+    expansion.tare_position();
+    Indexer.tare_position(); 
     Encoder_back.reset();
     Rotacion.reset(); 
     Rotacion.set_reversed(true);  //Es necesario para reversear el sensor de rotación
+    
 }
+
+
 
