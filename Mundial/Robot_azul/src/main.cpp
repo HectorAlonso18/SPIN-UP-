@@ -218,10 +218,10 @@ void autonomous() {
 
 
 void opcontrol() {
-	
-	Robot::start_task("get_orientation", Robot::track_orientation);
-	Robot::start_task("Drive", Robot::drive);
-	Robot::start_task("PID_DRIFTING", Robot::Flywheel_PID_a); 
+   
+	//Robot::start_task("get_orientation", Robot::track_orientation);
+	//Robot::start_task("Drive", Robot::drive);
+	//Robot::start_task("PID_DRIFTING", Robot::Flywheel_PID_a); 
 	
 	//Robot::start_task("drifting", Robot::PID_drift_Cesar); 	
 }
