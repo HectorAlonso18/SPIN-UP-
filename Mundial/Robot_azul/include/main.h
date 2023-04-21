@@ -43,6 +43,7 @@
 #include "PID.hpp"
 #include "filtros.h"
 #include "auxiliar_fuctions.h"
+#include "Screen.h"
 
 #include "pros/apix.h"
 #include "math.h"

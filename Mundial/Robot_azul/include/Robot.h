@@ -6,6 +6,7 @@
 #include <atomic>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 #include <deque>
@@ -34,8 +35,8 @@ public:
  
  static pros::Motor Indexer;
 
- static pros::Motor Left_expansion;
- static pros::Motor Right_expansion;  
+ static pros::Motor Expansion_;
+
 
  static pros::Imu gyro;
  static pros::Rotation Rotacion; 
@@ -162,11 +163,11 @@ public:
 //////////////////////////////////////////////////////////////////////AUTONOMO//////////////////////////////////////////////////////////////////////
  /*Mueve el robot a una determinada coordenada y posición, usando dos controladores PID
    Modo_facing -> Mueve el robot a una determinada coordenada y una coordenada a apuntar*/
- static void Move_to_point(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo_sec, double TargetX, double TargetY,bool pure_pursuit);
+ static void Move_to_point(double(*fuctPtr_Mode)(double,double,double),double potencia,std::vector<double> posicion, std::vector<double>DrivePID, std::vector<double>TurnPID, double tiempo_sec, float TargetX=0, float TargetY=0,bool pure_pursuit=false);
  
  
  /*Mueve el robot con PID,  Modo 1:lineal , Modo 2: giros*/
- static void Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacion,float potencia,std::vector<double> TurnPID,double tiempo_sec, float TargetX, float TargetY, float Turn_offset);
+ static void Turning(double(*fuctPtr_Mode)(double,double,double),float Orientacion,float potencia,std::vector<double> TurnPID,double tiempo_sec,float TargetX=0, float TargetY=0, float Turn_offset=0);
  
  /*Funcion para ver el comportamiento de reacción del sistema y después poder tunearlo correctamente*/
  static void tune_pid(float tiempo_sec, float step_percent, pros::motor_gearset_e Gearset, std::vector<pros::Motor> Motores,std::string Entrada); 
@@ -177,6 +178,8 @@ public:
  /*Mueve el flywheel a una determinada velocidad medida en RPM 
    Dispara las veces que se le indica siempre y cuando esté estabilizado*/
  static void Flywheel_PID_a (void*ptr); 
+
+ static void Flywheel_PID_motor (void*ptr); 
  
  static void Shoot_PID(int disparos ,std::string mode ,int delay_msec); 
  
