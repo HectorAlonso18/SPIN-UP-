@@ -39,12 +39,12 @@ public:
 
 
  static pros::Imu gyro;
- static pros::Rotation Rotacion; 
+ 
 
  static pros::ADIEncoder Encoder_Derecho;
  static pros::ADIEncoder Encoder_back;
 
- static pros::ADIMotor Green_led;
+ static pros::ADIMotor Red_led;
  static pros::ADIMotor Blue_led;  
 
 
@@ -199,7 +199,7 @@ public:
 
  static void Turn_lights(int mode); 
 
- static void Lights(int _green, int _blue); 
+ static void Lights(int _red, int _blue); 
 
  static void Release_expansion(bool state); 
 

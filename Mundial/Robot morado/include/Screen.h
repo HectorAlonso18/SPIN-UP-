@@ -3,7 +3,7 @@
 #include <string>
 
 //configuracion
-#define HUE 183
+#define HUE 287
 #define DEFAULT 1
 #define AUTONOMOS "Ofensiva", "Defensiva"
 
