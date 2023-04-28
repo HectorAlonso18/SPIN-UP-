@@ -175,14 +175,14 @@ void init(int hue, int default_auton, const char **autons){
 
 	/////////////////////////////////calis////////////////////////////////////////////
 	lv_style_copy(&Pokayoke_fuera, &lv_style_plain);
-	Pokayoke_fuera.body.main_color = LV_COLOR_MAKE(77, 255, 255);
-	Pokayoke_fuera.body.grad_color = LV_COLOR_MAKE(77, 255, 255);
+	Pokayoke_fuera.body.main_color = LV_COLOR_MAKE(255, 77, 255);
+	Pokayoke_fuera.body.grad_color = LV_COLOR_MAKE(255, 77, 255);
 	Pokayoke_fuera.body.radius = 0;
 	Pokayoke_fuera.text.color = LV_COLOR_MAKE(255, 255, 255);
 
 	lv_style_copy(&Pokayoke_apachurrado, &lv_style_plain);
-	Pokayoke_apachurrado.body.main_color = LV_COLOR_MAKE(0, 179, 179);
-	Pokayoke_apachurrado.body.grad_color = LV_COLOR_MAKE(0, 179, 179);
+	Pokayoke_apachurrado.body.main_color = LV_COLOR_MAKE(179, 0, 179);
+	Pokayoke_apachurrado.body.grad_color = LV_COLOR_MAKE(179, 0, 179);
 	Pokayoke_apachurrado.body.radius = 0;
 	Pokayoke_apachurrado.text.color = LV_COLOR_MAKE(255, 255, 255);
 

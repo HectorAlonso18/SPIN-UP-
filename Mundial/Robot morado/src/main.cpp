@@ -34,7 +34,7 @@ void autonomous() {
     //Robot::start_task("PRINTING", screen::odom_stats);
 	//Robot::start_task("GPS", Robot::rastreo);
 
-  
+    int cesar_constant=1; 
 
 
 
@@ -43,47 +43,86 @@ void autonomous() {
 		
 		Robot::start_task("GPS", Robot::rastreo);
 		Robot::start_task("PRINTING", screen::odom_stats);
-        Robot::eat(200); 
+		Robot::start_task("PID_FLYWHEEL", Robot::Flywheel_PID_motor); 
+        
+		
+		Robot::eat(200); 
+		Robot::RPM=430*cesar_constant; 
 
 		//Agarra disco en la linea
-		Robot::Move_to_point(Control_move_to, 1, {-1.99-1,7.76-3,313.25}, Drive_Constant, Turn_Constant, 2); 
+
+		Robot::Move_to_point(Control_move_to, 1, {-2.1,7.59,319.40}, Drive_Constant, Turn_Constant, 2); 
 		
 		pros::delay(1000); 
 		Robot::eat(0); 
-
+       
+	   
 		//Gira el roller
 		Robot::Move_to_point(Control_move_to, 1, {-2.77,.81-1.25,180.7}, Drive_Constant, Turn_Constant, 3); 
 		Robot::Move_Roller_pos(-150, 100); 
         pros::delay(1000); 
-		Robot::Move_to_point(Control_move_to, 1, {-2.77,5,180.7}, Drive_Constant, Turn_Constant, 3.5); 
+
+		Robot::Move_to_point(Control_move_to, 1, {-2.77,5,180.7}, Drive_Constant, Turn_Constant, 3); 
         
 
-		//Posicion de tiro 
-		//Robot::move_Flywheel(10000); 
 		Robot::eat(200); 
-		Robot::move_Flywheel(10000); 
-	
-		Robot::Move_to_point(Control_move_to, 1, {17.01,8.72+12,168}, Drive_Constant, Turn_Constant, 6); 
         
-	
+		//Tumba torre de tres y tira 
+		Robot::Move_to_point(Control_move_to, .6, {8.1,23,175.5}, Drive_Constant, Turn_Constant, 6.5); 
+        
 		//Primer tiro 
+		pros::delay(3000); //2300 
+		Robot::Shoot_normal(15);
+		pros::delay(2500); //2000  
+		Robot::Shoot_normal(15);
+		pros::delay(2500);  //2000
+		Robot::Shoot_normal(15);
+        
+
+		
+		pros::delay(800);
+
+		Robot::eat(200); 
+        
+		//Tumba torre de tres de nuestro lado 
+		Robot::RPM= 425; 
+		Robot::Move_to_point(Control_move_to, 1, {24.83,18.86,42.45}, Drive_Constant, Turn_Constant, 3); 
+		Robot::Move_to_point(Control_move_to, .085, {39.42,36,37.8}, Drive_Constant, Turn_Constant, 8); 
+		
+		//Posicion para realizar la segunda tanda 
+		Robot::Move_to_point(Control_move_to, .8, {36.09,45.44,154.25}, Drive_Constant, Turn_Constant, 6); 
+		
+			//Segundo tiro 
 		pros::delay(3000); 
 		Robot::Shoot_normal(20);
-		pros::delay(4000);  
+		pros::delay(2500);  
 		Robot::Shoot_normal(20);
-		pros::delay(4000);  
+		pros::delay(2500);  
 		Robot::Shoot_normal(20);
-      
-	  /*
-		//Tira torre de tres 
-		Robot::Move_to_point(Control_move_to, 1, {24.11,4.49,60.95}, Drive_Constant, Turn_Constant, 5); 
-		//Se la come
-		Robot::Move_to_point(Control_move_to, 1, {43.8,19.71,44.8}, Drive_Constant, Turn_Constant, 5); 
+
+		pros::delay(750);
         
-		//Posicioin de tiro 
+		//Escuadra
+		Robot::Move_to_point(Control_move_to, .75, {54.22-2,4.87,37.22}, Drive_Constant, Turn_Constant, 6);
+		
+		Robot::Move_to_point(Control_move_to, .8, {58,4.87,37.22}, Drive_Constant, Turn_Constant, 5);  
+		Robot::Move_to_point(Control_move_to, .075, {60,35.4+5,43.8}, Drive_Constant, Turn_Constant, 9); 
 
+		//Posicion tercera tanda
+		Robot::Move_to_point(Control_move_to, .8, {36.09,45.44,154.25}, Drive_Constant, Turn_Constant, 6); 
+				
+		//Tercer tiro 
+		pros::delay(3000); 
+		Robot::Shoot_normal(20);
+		pros::delay(2500);  
+		Robot::Shoot_normal(20);
+		pros::delay(2500);  
+		Robot::Shoot_normal(20);
 
-        */
+        
+
+		
+
 		
 		  
     } 
@@ -95,18 +134,19 @@ void autonomous() {
 
 
 void opcontrol() {
+    //Robot::start_task("PRINTING", screen::odom_stats);
+	//Robot::start_task("GPS", Robot::rastreo);
 
-
-
-//Robot::RPM=400; 
-
-//Robot::start_task("FLYWHEEL", Robot::Flywheel_PID_motor); 
 
 
 	Robot::start_task("get_orientation", Robot::track_orientation);
 	Robot::start_task("Drive", Robot::drive);
 	Robot::start_task("PID_FLYWHEEL", Robot::Flywheel_PID_motor); 
 	Robot::start_task("drifting", Robot::PID_drift_Alex_double); 	
+
+
+
+
 
 
 
